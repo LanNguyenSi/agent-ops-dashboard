@@ -9,11 +9,12 @@ export async function getRepoHealth(owner: string, repo: string): Promise<RepoHe
     const { data: repository } = await octokit.repos.get({ owner, repo });
     
     // Get open PRs count
+    // TODO: Add pagination support for repos with >100 open PRs
     const { data: prs } = await octokit.pulls.list({
       owner,
       repo,
       state: "open",
-      per_page: 1,
+      per_page: 100,
     });
     
     // Get latest workflow runs
@@ -62,8 +63,8 @@ export async function getRepoHealth(owner: string, repo: string): Promise<RepoHe
       updated_at: repository.updated_at,
     };
   } catch (error: any) {
-    // Handle rate limiting
-    if (error.status === 429) {
+    // Handle rate limiting (429 Too Many Requests or 403 Forbidden with rate limit)
+    if (error.status === 429 || (error.status === 403 && error.response?.headers["x-ratelimit-remaining"] === "0")) {
       const resetTime = error.response?.headers["x-ratelimit-reset"];
       throw new Error(`Rate limited. Reset at ${new Date(resetTime * 1000)}`);
     }

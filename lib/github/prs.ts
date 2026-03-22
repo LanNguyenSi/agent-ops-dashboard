@@ -4,6 +4,7 @@ import type { PullRequest } from "./types";
 export async function getOpenPRs(owner: string, repo: string): Promise<PullRequest[]> {
   const octokit = getOctokit();
   
+  // TODO: Add pagination support for repos with >100 open PRs
   const { data: prs } = await octokit.pulls.list({
     owner,
     repo,
