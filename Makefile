@@ -16,6 +16,7 @@ hooks: ## Set up Git pre-commit hooks (Husky + lint-staged)
 	npx husky init
 	cp .husky-pre-commit .husky/pre-commit
 	chmod +x .husky/pre-commit
+
 dev: ## Start development server (local)
 	npm run dev
 

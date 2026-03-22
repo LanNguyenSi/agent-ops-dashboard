@@ -1,74 +1,77 @@
-# .ai/TASKS.md — Work Packages
+# TASKS
 
-> Self-contained tasks for agents. Each task can be implemented independently.
+## Critical Path
 
-## Priority Levels
-- **P0** — Must have for production launch
-- **P1** — Important for user experience
-- **P2** — Nice to have, future work
+001 -> 002 -> 003 -> 008
 
-## Template
+## wave-1
 
-```markdown
-### Task XXX: [Title]
-**Priority:** P0/P1/P2
-**Estimate:** Xh
-**Status:** Open / In Progress / Done
+Lock scope, assumptions, and engineering baseline.
 
-**Problem:** What's missing or broken.
-**Solution:** What to build.
-**Files:** Which files to create/modify.
-**Notes:** Implementation hints, patterns to follow.
-```
+### 001 Write project charter and architecture baseline
 
-## Tasks
+- Priority: P0
+- Category: foundation
+- Depends on: none
+- Summary: Capture the product scope, users, constraints, architecture shape, and open questions.
 
-### Task 001: Initial Data Model
-**Priority:** P0
-**Estimate:** 2h
-**Status:** Open
+### 002 Set up repository and delivery baseline
 
-**Problem:** No database schema defined yet.
-**Solution:** Design Prisma schema based on domain requirements.
-**Files:** `prisma/schema.prisma`
-**Notes:** Include all relationships, enums, indexes. Run `npx prisma migrate dev --name init`.
+- Priority: P0
+- Category: foundation
+- Depends on: 001
+- Summary: Create the repository structure, quality checks, and basic documentation needed for implementation.
 
-### Task 002: Public Pages
-**Priority:** P0
-**Estimate:** 4h
-**Status:** Open
+## wave-2
 
-**Problem:** No public-facing UI.
-**Solution:** Build listing + detail pages.
-**Files:** `app/(public)/`, `components/public/`
-**Notes:** Server Components, responsive, en UI text.
+Deliver the first critical capabilities and required controls.
 
-### Task 003: Admin Panel
-**Priority:** P0
-**Estimate:** 4h
-**Status:** Open
+### 003 Implement GitHub repository health overview (CI status, open PRs, failing checks)
 
-**Problem:** No admin interface.
-**Solution:** Build login, dashboard, CRUD pages.
-**Files:** `app/admin/`, `components/admin/`, `lib/auth.ts`
-**Notes:** JWT auth, protected routes, mobile-responsive.
+- Priority: P0
+- Category: feature
+- Depends on: 001, 002
+- Summary: Design and implement the capability for: GitHub repository health overview (CI status, open PRs, failing checks).
 
-### Task 004: API Endpoints
-**Priority:** P0
-**Estimate:** 3h
-**Status:** Open
+### 004 Implement Agent deployment status tracker (Ice, Lava, Stone agents)
 
-**Problem:** No REST API.
-**Solution:** Build CRUD endpoints with auth.
-**Files:** `app/api/`
-**Notes:** Use transactions for related mutations. Return proper HTTP status codes.
+- Priority: P0
+- Category: feature
+- Depends on: 001, 002
+- Summary: Design and implement the capability for: Agent deployment status tracker (Ice, Lava, Stone agents).
 
-### Task 005: Docker Deployment
-**Priority:** P0
-**Estimate:** 2h
-**Status:** Open
+## wave-3
 
-**Problem:** No production deployment config.
-**Solution:** Multi-stage Dockerfile + docker-compose.traefik.yml
-**Files:** `Dockerfile`, `docker-compose.traefik.yml`
-**Notes:** Remember `prisma generate` in both deps AND builder stages.
+Expand feature coverage once the core path is in place.
+
+### 005 Implement Pipeline run history with pass/fail trends
+
+- Priority: P1
+- Category: feature
+- Depends on: 001, 002
+- Summary: Design and implement the capability for: Pipeline run history with pass/fail trends.
+
+### 006 Implement Alert system for CI failures and deployment issues
+
+- Priority: P1
+- Category: feature
+- Depends on: 001, 002
+- Summary: Design and implement the capability for: Alert system for CI failures and deployment issues.
+
+### 007 Implement Real-time refresh with configurable polling interval
+
+- Priority: P1
+- Category: feature
+- Depends on: 001, 002
+- Summary: Design and implement the capability for: Real-time refresh with configurable polling interval.
+
+## wave-4
+
+Harden, verify, and prepare the system for release.
+
+### 008 Add integration and error-handling coverage
+
+- Priority: P1
+- Category: quality
+- Depends on: 003, 004, 005, 006, 007
+- Summary: Verify the critical path, failure handling, and integration boundaries with tests.
