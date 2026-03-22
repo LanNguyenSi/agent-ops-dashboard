@@ -1,56 +1,16 @@
-# .ai/DECISIONS.md — Architecture Decision Log
+# DECISIONS
 
-> Document why things are built the way they are.
+## ADR-001: Initial Architecture Shape
 
-## Format
+- Decision: Start with modular monolith as the default architecture.
+- Full ADR: ../adrs/001-initial-architecture-shape.md
 
-```markdown
-### DXXX: [Decision Title]
-**Date:** YYYY-MM-DD
-**Status:** Accepted / Superseded / Deprecated
-**Context:** Why was this decision needed?
-**Decision:** What was decided?
-**Consequences:** What are the trade-offs?
-```
+## ADR-002: Primary Data Store
 
-## Decisions
+- Decision: Use a relational primary data store unless the domain clearly requires a different model.
+- Full ADR: ../adrs/002-primary-data-store.md
 
-### D001: Next.js App Router with Server Components
-**Date:** now
-**Status:** Accepted
-**Context:** Need a full-stack framework with good DX, SSR, and API routes.
-**Decision:** Use Next.js App Router with Server Components as default.
-**Consequences:** 
-- Pages with DB queries need `export const dynamic = "force-dynamic"`
-- Client interactivity requires explicit `'use client'` directive
-- Simpler deployment (single Node.js process)
+## ADR-003: Integration Strategy
 
-### D002: Prisma ORM with Sqlite
-**Date:** now
-**Status:** Accepted
-**Context:** Need type-safe database access with migration support.
-**Decision:** Use Prisma ORM with sqlite.
-**Consequences:**
-- Schema-first approach (edit `prisma/schema.prisma`, then migrate)
-- Generated client needs regeneration after schema changes
-- Docker builds need `prisma generate` in builder stage
-
-### D003: Tailwind CSS 4
-**Date:** now
-**Status:** Accepted
-**Context:** Need utility-first CSS with good DX.
-**Decision:** Use Tailwind CSS 4 with `@import "tailwindcss"` syntax.
-**Consequences:**
-- Do NOT use old `@tailwind base/components/utilities` syntax
-- `@tailwindcss/typography` for prose content
-- Responsive: mobile-first with `sm:`, `md:`, `lg:` breakpoints
-
-### D004: Docker + Traefik Deployment
-**Date:** now
-**Status:** Accepted
-**Context:** Need production deployment with SSL.
-**Decision:** Multi-stage Dockerfile + Traefik reverse proxy.
-**Consequences:**
-- Traefik handles SSL (Let's Encrypt) and routing via Docker labels
-- No nginx needed for the app itself
-- Easy to add new services (just add Traefik labels)
+- Decision: Encapsulate third-party integrations behind internal modules and keep failure handling explicit.
+- Full ADR: ../adrs/003-integration-strategy.md

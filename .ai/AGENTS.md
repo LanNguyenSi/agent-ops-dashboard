@@ -1,53 +1,41 @@
-# .ai/AGENTS.md — Agent Configuration
+# AGENTS
 
-> Who works on this project and how.
+## Roles
 
-## Project
+- Planning lead: maintains the plan, validates architecture assumptions, and reruns planning when inputs materially change.
+- Architecture reviewer: challenges module boundaries, scaling assumptions, and integration risks before implementation expands.
+- Implementation lead: executes one reviewable task at a time and updates tests and docs with each change.
+- Human owner: remains accountable for review, release, and acceptance of agent-generated work.
 
-- **Name:** Agent Ops Dashboard
-- **Stack:** Next.js + Prisma + PostgreSQL + Tailwind CSS
-- **Language:** en
-
-## Agents
-
-### Lead / Reviewer
-- Reviews PRs, plans tasks, manages deployments
-- Can merge to main
-- Focus: Architecture, quality, consistency
-
-### Developer
-- Implements features from tasks/
-- Creates feature branches + PRs
-- Focus: Implementation, testing
 
 ## Workflow
 
-1. Tasks are defined in `.ai/TASKS.md` or `tasks/` directory
-2. Developer creates branch: `feat/<task-id>-<short-name>`
-3. Developer implements + commits
-4. Developer pushes branch + creates PR
-5. Lead reviews, provides score (1-10), merges
-6. Lead deploys to production
+1. Read `.ai/ARCHITECTURE.md`, `.ai/TASKS.md`, and the current prompt export before changing code.
+2. Follow the applicable playbooks listed below for workflow, testing, documentation, and governance expectations.
+3. Keep diffs small, update tests with the change, and avoid bundling unrelated work.
+4. Escalate blockers or scope changes instead of silently improvising around them.
 
-## Code Standards
+## Applicable Playbooks
 
-- TypeScript strict mode
-- No `any` types
-- Database mutations in transactions when modifying related data
-- `force-dynamic` export on all pages with DB queries
-- German UI strings (if language is de), English code/comments
-- Conventional commits: `feat:`, `fix:`, `docs:`, `chore:`
+- /root/git/agent-planforge/playbooks/planning-and-scoping.md
+- /root/git/agent-engineering-playbook/playbooks/01-project-setup.md
+- /root/git/agent-engineering-playbook/playbooks/02-architecture.md
+- /root/git/agent-engineering-playbook/playbooks/03-team-roles.md
+- /root/git/agent-engineering-playbook/playbooks/04-design-principles.md
+- /root/git/agent-engineering-playbook/playbooks/05-development-workflow.md
+- /root/git/agent-engineering-playbook/playbooks/06-testing-strategy.md
+- /root/git/agent-engineering-playbook/playbooks/07-quality-assurance.md
+- /root/git/agent-engineering-playbook/playbooks/08-documentation.md
 
-## File Conventions
+## Change Rules
 
-| Directory | Purpose |
-|-----------|---------|
-| `app/(public)/` | Public-facing pages |
-| `app/admin/` | Admin panel pages |
-| `app/api/` | API routes |
-| `components/public/` | Public UI components |
-| `components/admin/` | Admin UI components |
-| `components/shared/` | Shared components |
-| `lib/` | Utilities, DB client, auth |
-| `prisma/` | Database schema + migrations |
-| `.ai/` | Agent context files (this folder) |
+- Preserve backward compatibility unless a breaking change is explicitly accepted.
+- Update docs and ADRs when architectural assumptions shift.
+- Treat prompts and generated artifacts as review inputs, not as permission to skip engineering judgment.
+
+## Project Context
+
+- Project: agent-ops-dashboard
+- Planner profile: product
+- Phase: phase_1
+- Path: core

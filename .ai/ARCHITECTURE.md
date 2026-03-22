@@ -1,84 +1,39 @@
-# .ai/ARCHITECTURE.md — System Architecture
+# ARCHITECTURE
 
-> Read this to understand the system before making changes.
+## Summary
 
-## Overview
+Operational dashboard for monitoring AI agents, deployments, CI/CD pipeline health, and GitHub repository status. Provides a real-time overview for teams running multiple AI agents across multiple repositories.
 
-**Agent Ops Dashboard** is a full-stack Next.js application.
+## Recommended Shape
 
-```
-agent-ops-dashboard/
-├── app/
-│   ├── (public)/          → Public pages (listing, detail, booking)
-│   ├── admin/             → Admin panel (dashboard, CRUD, analytics)
-│   ├── api/               → API routes (REST endpoints)
-│   ├── globals.css        → Global styles (@import "tailwindcss")
-│   └── layout.tsx         → Root layout
-├── components/
-│   ├── public/            → Public-facing components
-│   ├── admin/             → Admin components
-│   └── shared/            → Shared components
-├── lib/
-│   ├── prisma.ts          → Prisma client singleton
-│   ├── auth.ts            → JWT auth helpers
-│   ├── email.ts           → Email service (nodemailer)
-│   └── utils.ts           → Shared utilities
-├── prisma/
-│   └── schema.prisma      → Database schema
-├── .ai/                   → Agent context (this folder)
-├── Dockerfile             → Multi-stage production build
-├── docker-compose.yml     → Local development
-└── docker-compose.traefik.yml → Production with Traefik
-```
+- Start with modular monolith as the default architecture.
+- Tech stack hint: application stack to be confirmed
+- Phase: phase_1
+- Path: core
 
-## Tech Stack
+## Key Modules
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | Next.js (App Router, Server Components) |
-| Language | TypeScript (strict mode) |
-| Database | Sqlite via Prisma ORM |
-| Styling | Tailwind CSS 4 |
-| Auth | NONE |
-| Deployment | Docker + Traefik (SSL via Let's Encrypt) |
-| Charts | Recharts |
-| Markdown | react-markdown + remark-gfm |
+- user-facing application surface
+- domain and business logic modules
+- persistence and integration boundary
 
-## Key Patterns
+## Integrations
 
-### Server Components (Default)
-All pages are Server Components by default. They fetch data directly from DB.
-Pages with DB queries need: `export const dynamic = "force-dynamic";`
+- GitHub REST API v3
+- Triologue agent status API (optional)
 
-### API Routes
-REST endpoints in `app/api/`. Auth via JWT Bearer token.
-All DB mutations that affect related data use `prisma.$transaction()`.
+## Risks
 
-### Client Components
-Only used when needed: forms, interactive buttons, state management.
-Marked with `'use client';` at the top.
+- Third-party integrations may slow delivery or require more explicit failure handling than expected.
 
-### Authentication
+## Playbook References
 
-## Database
-
-Schema defined in `prisma/schema.prisma`.
-After schema changes:
-1. `npx prisma migrate dev --name <description>`
-2. `npx prisma generate`
-3. Restart dev server
-
-## Deployment
-
-### Docker (Production)
-Multi-stage Dockerfile: deps → builder → runner.
-Important: `prisma generate` runs in BOTH deps AND builder stages.
-
-```bash
-docker compose -f docker-compose.traefik.yml build --no-cache app
-docker compose -f docker-compose.traefik.yml up -d
-```
-
-### Traefik
-Reverse proxy with automatic SSL (Let's Encrypt).
-Services are routed via Docker labels.
+- /root/git/agent-planforge/playbooks/planning-and-scoping.md
+- /root/git/agent-engineering-playbook/playbooks/01-project-setup.md
+- /root/git/agent-engineering-playbook/playbooks/02-architecture.md
+- /root/git/agent-engineering-playbook/playbooks/03-team-roles.md
+- /root/git/agent-engineering-playbook/playbooks/04-design-principles.md
+- /root/git/agent-engineering-playbook/playbooks/05-development-workflow.md
+- /root/git/agent-engineering-playbook/playbooks/06-testing-strategy.md
+- /root/git/agent-engineering-playbook/playbooks/07-quality-assurance.md
+- /root/git/agent-engineering-playbook/playbooks/08-documentation.md
