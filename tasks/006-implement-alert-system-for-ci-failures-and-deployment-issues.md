@@ -39,19 +39,20 @@ Add a focused module for Alert system for CI failures and deployment issues that
 
 ## Files To Create Or Modify
 
-- lib/pipeline/types.ts — Pipeline run types (Run, Status, Trend)
-- lib/pipeline/service.ts — Pipeline history service
-- lib/pipeline/analytics.ts — Pass/fail trend calculations
-- lib/pipeline/filters.ts — Filter pipelines by status, date, repo
-- app/api/pipeline/runs/route.ts — GET pipeline runs with filters
-- app/api/pipeline/stats/route.ts — GET pipeline statistics
-- app/api/pipeline/trends/route.ts — GET pass/fail trends over time
-- components/PipelineChart.tsx — Trend chart component (Recharts)
-- components/PipelineList.tsx — Pipeline run list
-- components/PipelineCard.tsx — Single pipeline run card
-- components/StatusBadge.tsx — Pipeline status indicator
-- tests/pipeline/analytics.test.ts — Trend calculation tests
-- tests/pipeline/filters.test.ts — Filter logic tests
+- lib/alerts/types.ts — Alert types (Alert, Severity, Status)
+- lib/alerts/service.ts — Alert CRUD service
+- lib/alerts/rules.ts — Alert rule engine (conditions, triggers)
+- lib/alerts/notifications.ts — Notification delivery (email, Slack, Discord)
+- app/api/alerts/route.ts — GET (list) + POST (create) alert endpoints
+- app/api/alerts/[id]/route.ts — GET/PUT/DELETE single alert
+- app/api/alerts/acknowledge/route.ts — POST acknowledge alert
+- app/api/alerts/rules/route.ts — GET/POST alert rules
+- components/AlertList.tsx — Alert list component
+- components/AlertCard.tsx — Single alert card
+- components/AlertBadge.tsx — Severity indicator
+- prisma/schema.prisma — Alert and AlertRule models
+- tests/alerts/rules.test.ts — Rule engine tests
+- tests/alerts/notifications.test.ts — Notification tests
 
 ## Acceptance Criteria
 
