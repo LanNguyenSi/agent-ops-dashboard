@@ -1,13 +1,17 @@
 import { getOctokit } from "@/lib/github/client";
 import type { PipelineRun, PipelineFilters } from "./types";
+import { getMockPipelineRuns } from "./mock-data";
 
 export async function getPipelineRuns(filters: PipelineFilters = {}): Promise<PipelineRun[]> {
-  const octokit = getOctokit();
   const reposEnv = process.env.GITHUB_REPOS;
   
+  // Use mock data if GITHUB_REPOS not configured
   if (!reposEnv) {
-    throw new Error("GITHUB_REPOS environment variable not set");
+    console.log("GITHUB_REPOS not set, using mock pipeline data");
+    return getMockPipelineRuns().slice(0, filters.limit || 50);
   }
+  
+  const octokit = getOctokit();
   
   const repos = reposEnv.split(",").map((r) => r.trim());
   const allRuns: PipelineRun[] = [];
