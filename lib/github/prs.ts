@@ -31,6 +31,6 @@ export async function getOpenPRs(owner: string, repo: string): Promise<PullReque
       ref: pr.base.ref,
     },
     draft: pr.draft || false,
-    mergeable_state: pr.mergeable_state || undefined,
+    mergeable_state: (pr as any).mergeable_state || undefined,
   }));
 }
