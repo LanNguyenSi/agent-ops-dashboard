@@ -3,10 +3,10 @@ import { getRepoHealth } from "@/lib/github/repos";
 
 export async function GET(
   request: Request,
-  { params }: { params: { owner: string; repo: string } }
+  { params }: { params: Promise<{ owner: string; repo: string }> }
 ) {
   try {
-    const { owner, repo } = params;
+    const { owner, repo } = await params;
     const health = await getRepoHealth(owner, repo);
     return NextResponse.json(health);
   } catch (error: any) {
