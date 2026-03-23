@@ -1,0 +1,23 @@
+services:
+  app:
+    build: .
+    container_name: agent-ops-dashboard
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - GITHUB_REPOS=${GITHUB_REPOS:-LanNguyenSi/telerithm,LanNguyenSi/agent-ops-dashboard,LanNguyenSi/plagiarism-coach}
+    networks:
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.agent-ops.rule=Host(`ops.opentriologue.ai`)"
+      - "traefik.http.routers.agent-ops.entrypoints=websecure"
+      - "traefik.http.routers.agent-ops.tls=true"
+      - "traefik.http.routers.agent-ops.tls.certresolver=letsencrypt"
+      - "traefik.http.services.agent-ops.loadbalancer.server.port=3000"
+
+networks:
+  traefik:
+    external: true
+    name: traefik
