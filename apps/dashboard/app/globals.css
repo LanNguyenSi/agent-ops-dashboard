@@ -48,23 +48,17 @@ a {
 
 .surface-card {
   position: relative;
-  overflow: hidden;
   border: 1px solid var(--line);
-  background: linear-gradient(180deg, var(--surface-strong), var(--surface));
+  background: linear-gradient(180deg, var(--surface-strong), var(--surface)),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.24), transparent 40%);
   box-shadow: var(--shadow);
   backdrop-filter: blur(18px);
 }
 
-.surface-card::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.24), transparent 40%);
-}
-
 .dashboard-topbar {
-  position: relative;
+  position: sticky;
+  top: 1rem;
+  z-index: 30;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -205,7 +199,6 @@ a {
 }
 
 .data-card:hover {
-  transform: translateY(-2px);
   border-color: var(--line-strong);
   box-shadow: var(--shadow-hover);
 }
@@ -268,7 +261,7 @@ a {
     padding-top: 1rem;
   }
 
-  .dashboard-hero,
+  .dashboard-topbar,
   .dashboard-section {
     border-radius: 1.25rem;
   }
