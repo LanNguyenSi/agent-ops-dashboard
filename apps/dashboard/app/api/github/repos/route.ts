@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { applyRepoQuery, getAllRepos, normalizeRepoQuery, resolveRepoOwner } from "@/lib/github/repos";
+import { applyRepoQuery, getAllRepos, normalizeRepoQuery, paginateRepos, resolveRepoOwner } from "@/lib/github/repos";
 import type { RepoHealthResponse } from "@/lib/github/types";
 
 export async function GET(request: Request) {
@@ -8,6 +8,7 @@ export async function GET(request: Request) {
     const owner = resolveRepoOwner(searchParams.get("owner") ?? undefined);
     const query = normalizeRepoQuery({
       limit: searchParams.get("limit") ?? undefined,
+      page: searchParams.get("page") ?? undefined,
       sort: searchParams.get("sort") ?? undefined,
       order: searchParams.get("order") ?? undefined,
       filter: searchParams.get("filter") ?? undefined,
@@ -16,8 +17,8 @@ export async function GET(request: Request) {
 
     const snapshot = await getAllRepos(owner);
     const filteredRepos = applyRepoQuery(snapshot.repos, { ...query, limit: "all" });
-    const repos =
-      query.limit === "all" ? filteredRepos : filteredRepos.slice(0, query.limit);
+    const pagination = paginateRepos(filteredRepos, query.page, query.limit);
+    const repos = pagination.items;
 
     const response: RepoHealthResponse = {
       repos,
@@ -28,6 +29,12 @@ export async function GET(request: Request) {
         filtered: filteredRepos.length,
         returned: repos.length,
         limit: query.limit,
+        page: pagination.page,
+        totalPages: pagination.totalPages,
+        hasPreviousPage: pagination.hasPreviousPage,
+        hasNextPage: pagination.hasNextPage,
+        rangeStart: pagination.rangeStart,
+        rangeEnd: pagination.rangeEnd,
         sort: query.sort,
         order: query.order,
         filter: query.filter,
