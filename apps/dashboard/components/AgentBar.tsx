@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AgentCard } from "./AgentCard";
 import type { AgentActivity, Agent } from "@/lib/agents/types";
 
 interface GatewayAgent {
@@ -34,6 +33,29 @@ function toAgentActivity(agents: GatewayAgent[]): AgentActivity {
   };
 }
 
+const STATUS_DOT: Record<string, string> = {
+  online: "bg-emerald-500",
+  offline: "bg-slate-300",
+  idle: "bg-amber-400",
+};
+
+function AgentRow({ agent }: { agent: Agent }) {
+  return (
+    <div className="flex items-center gap-3 py-1.5">
+      <span className={`h-2 w-2 shrink-0 rounded-full ${STATUS_DOT[agent.status] ?? "bg-slate-300"}`} />
+      <span className="text-sm font-medium text-slate-800 truncate max-w-[120px]">{agent.name}</span>
+      {agent.lastMessage && (
+        <span className="truncate text-xs text-slate-400 hidden sm:block">{agent.lastMessage}</span>
+      )}
+      <span className={`ml-auto shrink-0 text-[11px] font-semibold ${
+        agent.status === "online" ? "text-emerald-600" : "text-slate-400"
+      }`}>
+        {agent.status}
+      </span>
+    </div>
+  );
+}
+
 export function AgentBar() {
   const [activity, setActivity] = useState<AgentActivity | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,7 +74,6 @@ export function AgentBar() {
           return;
         }
       } catch {}
-
       try {
         const res = await fetch("/api/agents");
         if (res.ok) {
@@ -63,7 +84,6 @@ export function AgentBar() {
           return;
         }
       } catch {}
-
       setError("Could not reach agent data source");
       setLoading(false);
     }
@@ -73,61 +93,45 @@ export function AgentBar() {
     return () => clearInterval(interval);
   }, []);
 
-  if (loading) {
-    return <span className="text-sm text-slate-400">Loading agents…</span>;
-  }
-
-  if (error) {
-    return <span className="text-sm text-rose-500">{error}</span>;
-  }
-
+  if (loading) return <span className="text-sm text-slate-400">Loading agents…</span>;
+  if (error) return <span className="text-sm text-rose-500">{error}</span>;
   if (!activity || activity.agents.length === 0) {
     return <span className="text-sm text-slate-400">No agents registered</span>;
   }
 
   return (
-    <div className="agent-bar-wrapper">
+    <div className="relative">
       <button
-        onClick={() => setExpanded(!expanded)}
+        onClick={() => setExpanded((o) => !o)}
         onKeyDown={(e) => { if (e.key === "Escape" && expanded) { e.preventDefault(); setExpanded(false); } }}
-        className="agent-bar-toggle"
+        className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm transition-colors hover:bg-slate-100"
         aria-expanded={expanded}
-        aria-label={`Toggle agent panel: ${activity.totalAgents} agents, ${activity.onlineAgents} online`}
+        aria-label={`${activity.totalAgents} agents — click to expand`}
       >
-        <span className="flex items-center gap-2">
-          <span className="text-sm font-medium text-slate-600">
-            {activity.totalAgents} {activity.totalAgents === 1 ? "Agent" : "Agents"}
-          </span>
-          <span className="flex items-center gap-1.5">
-            {activity.onlineAgents > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                {activity.onlineAgents} online
-              </span>
-            )}
-            {activity.offlineAgents > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-600">
-                {activity.offlineAgents} offline
-              </span>
-            )}
-          </span>
+        <span className="font-medium text-slate-600">
+          {activity.totalAgents} {activity.totalAgents === 1 ? "Agent" : "Agents"}
         </span>
-        <svg
-          className={`h-4 w-4 text-slate-400 transition-transform ${expanded ? "rotate-180" : ""}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
+        {activity.onlineAgents > 0 && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            {activity.onlineAgents} online
+          </span>
+        )}
+        {activity.offlineAgents > 0 && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-500">
+            {activity.offlineAgents} offline
+          </span>
+        )}
+        <svg className={`h-3.5 w-3.5 text-slate-400 transition-transform ${expanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
       {expanded && (
-        <div className="agent-bar-panel">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="absolute right-0 top-full z-50 mt-1.5 min-w-[280px] rounded-xl border border-slate-200 bg-white shadow-xl">
+          <div className="divide-y divide-slate-100 px-3">
             {activity.agents.map((agent) => (
-              <AgentCard key={agent.id} agent={agent} />
+              <AgentRow key={agent.id} agent={agent} />
             ))}
           </div>
         </div>
