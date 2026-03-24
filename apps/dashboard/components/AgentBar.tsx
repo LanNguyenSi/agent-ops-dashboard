@@ -33,25 +33,25 @@ function toAgentActivity(agents: GatewayAgent[]): AgentActivity {
   };
 }
 
-const STATUS_DOT: Record<string, string> = {
-  online: "bg-emerald-500",
-  offline: "bg-slate-300",
-  idle: "bg-amber-400",
+const STATUS_COLOR: Record<string, string> = {
+  online: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  offline: "bg-slate-100 text-slate-500 border-slate-200",
+  idle: "bg-amber-50 text-amber-600 border-amber-200",
 };
 
-function AgentRow({ agent }: { agent: Agent }) {
+function CompactAgentCard({ agent }: { agent: Agent }) {
   return (
-    <div className="flex items-center gap-3 py-1.5">
-      <span className={`h-2 w-2 shrink-0 rounded-full ${STATUS_DOT[agent.status] ?? "bg-slate-300"}`} />
-      <span className="text-sm font-medium text-slate-800 truncate max-w-[120px]">{agent.name}</span>
+    <div className="data-card flex flex-col gap-2 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <span className="truncate text-sm font-semibold text-slate-900">{agent.name}</span>
+        <span className={`shrink-0 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold capitalize ${STATUS_COLOR[agent.status] ?? STATUS_COLOR.offline}`}>
+          {agent.status}
+        </span>
+      </div>
       {agent.lastMessage && (
-        <span className="truncate text-xs text-slate-400 hidden sm:block">{agent.lastMessage}</span>
+        <p className="line-clamp-1 text-xs text-slate-400 italic">{agent.lastMessage}</p>
       )}
-      <span className={`ml-auto shrink-0 text-[11px] font-semibold ${
-        agent.status === "online" ? "text-emerald-600" : "text-slate-400"
-      }`}>
-        {agent.status}
-      </span>
+      <div className="text-[11px] text-slate-400">{agent.platform}</div>
     </div>
   );
 }
@@ -128,10 +128,10 @@ export function AgentBar() {
       </button>
 
       {expanded && (
-        <div className="absolute right-0 top-full z-50 mt-1.5 min-w-[280px] rounded-xl border border-slate-200 bg-white shadow-xl">
-          <div className="divide-y divide-slate-100 px-3">
+        <div className="absolute right-0 top-full z-50 mt-1.5 w-[480px] max-w-[90vw] rounded-xl border border-slate-200 bg-white/95 p-3 shadow-xl backdrop-blur">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {activity.agents.map((agent) => (
-              <AgentRow key={agent.id} agent={agent} />
+              <CompactAgentCard key={agent.id} agent={agent} />
             ))}
           </div>
         </div>
