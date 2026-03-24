@@ -1,65 +1,75 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AgentCard } from "./AgentCard";
+import { useGatewaySSE } from "@/lib/agents/gateway-sse";
 import type { AgentActivity } from "@/lib/agents/types";
 
+// Fallback: fetch from existing API route (Triologue / mock)
+async function fetchFallback(): Promise<AgentActivity | null> {
+  try {
+    const res = await fetch("/api/agents");
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
 export function AgentList() {
-  const [activity, setActivity] = useState<AgentActivity | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { activity: sseActivity, connected, error: sseError } = useGatewaySSE();
+  const [fallback, setFallback] = useState<AgentActivity | null>(null);
+  const [fallbackLoading, setFallbackLoading] = useState(false);
 
-  useEffect(() => {
-    async function fetchAgents() {
-      try {
-        const response = await fetch("/api/agents");
-        const data = await response.json();
+  // If SSE has no data yet and not connected, load fallback once
+  if (!sseActivity && !connected && !fallbackLoading && !fallback) {
+    setFallbackLoading(true);
+    fetchFallback().then((data) => {
+      setFallback(data);
+      setFallbackLoading(false);
+    });
+  }
 
-        if (!response.ok) {
-          throw new Error(data.error || "Failed to fetch agents");
-        }
-
-        setActivity(data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchAgents();
-    
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(fetchAgents, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  const activity = sseActivity ?? fallback;
+  const loading = !activity && (fallbackLoading || (!connected && !sseError));
 
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
-        <div className="text-gray-600">Loading agents...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
-        Error: {error}
+        <div className="text-gray-600">Connecting to agent-ops gateway...</div>
       </div>
     );
   }
 
   if (!activity || activity.agents.length === 0) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center text-gray-600">
-        No agents found.
+      <div className="space-y-4">
+        {sseError && (
+          <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
+            ⚠️ {sseError}
+          </div>
+        )}
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center text-gray-600">
+          No agents registered yet. Run <code className="font-mono text-sm">agent-ops register --name &lt;name&gt;</code> to add one.
+        </div>
       </div>
     );
   }
 
   return (
     <div>
+      {/* Connection status */}
+      <div className="flex items-center gap-2 mb-4 text-sm">
+        <span
+          className={`inline-block w-2 h-2 rounded-full ${
+            connected ? "bg-green-500" : "bg-yellow-500"
+          }`}
+        />
+        <span className="text-gray-500">
+          {connected ? "Live (SSE)" : "Polling fallback"}
+        </span>
+      </div>
+
       {/* Stats Summary */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
