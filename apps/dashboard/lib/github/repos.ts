@@ -1,5 +1,24 @@
 import { getOctokit } from "./client";
-import type { RepoHealth, WorkflowRun } from "./types";
+import { getOrRefreshCache } from "./cache";
+import type {
+  RepoFilter,
+  RepoHealth,
+  RepoHealthSnapshot,
+  RepoOrder,
+  RepoQueryOptions,
+  RepoSort,
+  WorkflowRun,
+} from "./types";
+
+const REPO_CACHE_TTL_MS = 5 * 60 * 1000;
+const REPO_BATCH_SIZE = 10;
+
+const DEFAULT_QUERY_OPTIONS: RepoQueryOptions = {
+  limit: 10,
+  sort: "updated",
+  order: "desc",
+  filter: "all",
+};
 
 export async function getRepoHealth(owner: string, repo: string): Promise<RepoHealth> {
   const octokit = getOctokit();
@@ -73,5 +92,254 @@ export async function getRepoHealth(owner: string, repo: string): Promise<RepoHe
       throw new Error(`Rate limited. Reset at ${new Date(resetTime * 1000)}`);
     }
     throw error;
+  }
+}
+
+export async function getAllRepos(owner: string): Promise<{
+  repos: RepoHealth[];
+  errors: string[];
+  fetchedAt: string;
+  cacheState: "hit" | "miss" | "stale";
+}> {
+  const { value, cacheState, updatedAt } = await getOrRefreshCache<RepoHealthSnapshot>(
+    `github-repos-${owner}`,
+    REPO_CACHE_TTL_MS,
+    async () => {
+      const repos = await listAllReposForUser(owner);
+      const results = await mapInBatches(repos, REPO_BATCH_SIZE, async ({ owner, repo }) =>
+        getRepoHealth(owner, repo)
+      );
+
+      const healthyRepos = results
+        .filter((result): result is PromiseFulfilledResult<RepoHealth> => result.status === "fulfilled")
+        .map((result) => result.value);
+
+      const errors = results
+        .filter((result): result is PromiseRejectedResult => result.status === "rejected")
+        .map((result) => {
+          const reason = result.reason;
+          return reason instanceof Error ? reason.message : String(reason);
+        });
+
+      return {
+        repos: healthyRepos,
+        errors,
+        fetchedAt: new Date().toISOString(),
+      };
+    }
+  );
+
+  return {
+    repos: value.repos,
+    errors: value.errors,
+    fetchedAt: value.fetchedAt || new Date(updatedAt).toISOString(),
+    cacheState,
+  };
+}
+
+export function normalizeRepoQuery(raw: Partial<Record<keyof RepoQueryOptions, string | number | undefined>>): RepoQueryOptions {
+  const limit = parseLimit(raw.limit);
+  const sort = parseSort(raw.sort);
+  const order = parseOrder(raw.order);
+  const filter = parseFilter(raw.filter);
+  const language = typeof raw.language === "string" && raw.language.trim() ? raw.language.trim() : undefined;
+
+  return {
+    limit,
+    sort,
+    order,
+    filter,
+    language,
+  };
+}
+
+export function applyRepoQuery(repos: RepoHealth[], options: RepoQueryOptions): RepoHealth[] {
+  let filtered = repos.slice();
+
+  if (options.filter === "failing") {
+    filtered = filtered.filter(
+      (repo) => repo.ci_status === "failure" || repo.failing_checks_count > 0
+    );
+  }
+
+  if (options.filter === "open_prs") {
+    filtered = filtered.filter((repo) => repo.open_pr_count > 0);
+  }
+
+  if (options.language) {
+    const expected = options.language.toLowerCase();
+    filtered = filtered.filter((repo) => repo.language?.toLowerCase() === expected);
+  }
+
+  filtered.sort((left, right) => compareRepos(left, right, options.sort, options.order));
+
+  if (options.limit === "all") {
+    return filtered;
+  }
+
+  return filtered.slice(0, options.limit);
+}
+
+export function resolveRepoOwner(explicitOwner?: string): string {
+  if (explicitOwner?.trim()) {
+    return explicitOwner.trim();
+  }
+
+  const envOwner = process.env.GITHUB_OWNER?.trim();
+  if (envOwner) {
+    return envOwner;
+  }
+
+  const reposEnv = process.env.GITHUB_REPOS;
+  if (reposEnv) {
+    const owners = new Set(
+      reposEnv
+        .split(",")
+        .map((entry) => entry.trim().split("/")[0])
+        .filter(Boolean)
+    );
+
+    if (owners.size === 1) {
+      return [...owners][0];
+    }
+  }
+
+  return "LanNguyenSi";
+}
+
+async function listAllReposForUser(owner: string): Promise<Array<{ owner: string; repo: string }>> {
+  const octokit = getOctokit();
+  const repos: Array<{ owner: string; repo: string }> = [];
+  let page = 1;
+
+  while (true) {
+    const { data } = await octokit.repos.listForUser({
+      username: owner,
+      sort: "updated",
+      direction: "desc",
+      per_page: 100,
+      page,
+      type: "owner",
+    });
+
+    repos.push(
+      ...data.map((repository) => ({
+        owner: repository.owner.login,
+        repo: repository.name,
+      }))
+    );
+
+    if (data.length < 100) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return repos;
+}
+
+async function mapInBatches<T, U>(
+  items: T[],
+  batchSize: number,
+  mapper: (item: T) => Promise<U>
+): Promise<Array<PromiseSettledResult<U>>> {
+  const results: Array<PromiseSettledResult<U>> = [];
+
+  for (let index = 0; index < items.length; index += batchSize) {
+    const batch = items.slice(index, index + batchSize);
+    const batchResults = await Promise.allSettled(batch.map((item) => mapper(item)));
+    results.push(...batchResults);
+  }
+
+  return results;
+}
+
+function parseLimit(rawLimit: string | number | undefined): number | "all" {
+  if (rawLimit === undefined) {
+    return DEFAULT_QUERY_OPTIONS.limit;
+  }
+
+  if (rawLimit === "all") {
+    return "all";
+  }
+
+  const parsed = typeof rawLimit === "number" ? rawLimit : Number.parseInt(rawLimit, 10);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 100) {
+    throw new Error("Invalid limit. Use 1-100 or 'all'.");
+  }
+
+  return parsed;
+}
+
+function parseSort(rawSort: string | number | undefined): RepoSort {
+  if (rawSort === undefined) {
+    return DEFAULT_QUERY_OPTIONS.sort;
+  }
+
+  const sort = String(rawSort);
+  if (sort === "updated" || sort === "stars" || sort === "name" || sort === "ci_status") {
+    return sort;
+  }
+
+  throw new Error("Invalid sort. Use updated, stars, name, or ci_status.");
+}
+
+function parseOrder(rawOrder: string | number | undefined): RepoOrder {
+  if (rawOrder === undefined) {
+    return DEFAULT_QUERY_OPTIONS.order;
+  }
+
+  const order = String(rawOrder);
+  if (order === "asc" || order === "desc") {
+    return order;
+  }
+
+  throw new Error("Invalid order. Use asc or desc.");
+}
+
+function parseFilter(rawFilter: string | number | undefined): RepoFilter {
+  if (rawFilter === undefined) {
+    return DEFAULT_QUERY_OPTIONS.filter;
+  }
+
+  const filter = String(rawFilter);
+  if (filter === "all" || filter === "failing" || filter === "open_prs") {
+    return filter;
+  }
+
+  throw new Error("Invalid filter. Use all, failing, or open_prs.");
+}
+
+function compareRepos(left: RepoHealth, right: RepoHealth, sort: RepoSort, order: RepoOrder): number {
+  const direction = order === "asc" ? 1 : -1;
+
+  if (sort === "name") {
+    return left.repo.localeCompare(right.repo) * direction;
+  }
+
+  if (sort === "stars") {
+    return ((left.stars ?? 0) - (right.stars ?? 0)) * direction;
+  }
+
+  if (sort === "ci_status") {
+    return (rankCiStatus(left.ci_status) - rankCiStatus(right.ci_status)) * direction;
+  }
+
+  return (
+    (new Date(left.updated_at).getTime() - new Date(right.updated_at).getTime()) * direction
+  );
+}
+
+function rankCiStatus(status: RepoHealth["ci_status"]): number {
+  switch (status) {
+    case "success":
+      return 0;
+    case "unknown":
+      return 1;
+    case "pending":
+      return 2;
+    case "failure":
+      return 3;
   }
 }

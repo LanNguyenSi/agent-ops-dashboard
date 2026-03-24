@@ -79,15 +79,15 @@ export function AgentList() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <div className="text-gray-600">Loading agents...</div>
+      <div className="loading-state">
+        <div>Loading agents...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
+      <div className="error-state">
         Error: {error}
       </div>
     );
@@ -95,44 +95,55 @@ export function AgentList() {
 
   if (!activity || activity.agents.length === 0) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center text-gray-600">
+      <div className="empty-state">
         No agents registered yet.
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="flex items-center gap-2 mb-4 text-sm">
-        <span className={`inline-block w-2 h-2 rounded-full ${source === "gateway" ? "bg-green-500" : "bg-yellow-500"}`} />
-        <span className="text-gray-500">
-          {source === "gateway" ? "agent-ops-gateway" : "Triologue fallback"}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
-          <div className="text-3xl font-bold text-gray-900">{activity.totalAgents}</div>
-          <div className="text-sm text-gray-600">Total Agents</div>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="inline-label">
+          <span
+            className={`inline-block h-2.5 w-2.5 rounded-full ${
+              source === "gateway" ? "bg-emerald-500" : "bg-amber-500"
+            }`}
+          />
+          <span>
+            Data source:
+          </span>
+          <span className="pill-label">
+            {source === "gateway" ? "agent-ops-gateway" : "Triologue fallback"}
+          </span>
         </div>
-        <div className="bg-white rounded-lg border border-green-200 p-4 text-center">
-          <div className="text-3xl font-bold text-green-600">{activity.onlineAgents}</div>
-          <div className="text-sm text-gray-600">Online</div>
-        </div>
-        <div className="bg-white rounded-lg border border-red-200 p-4 text-center">
-          <div className="text-3xl font-bold text-red-600">{activity.offlineAgents}</div>
-          <div className="text-sm text-gray-600">Offline</div>
+        <div className="text-sm text-slate-500">
+          Last updated {new Date(activity.lastUpdate).toLocaleTimeString()}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="summary-card">
+          <div className="summary-label">Total Agents</div>
+          <div className="summary-value">{activity.totalAgents}</div>
+          <div className="summary-note">Registered across the connected control plane.</div>
+        </div>
+        <div className="summary-card">
+          <div className="summary-label">Online</div>
+          <div className="summary-value text-emerald-600">{activity.onlineAgents}</div>
+          <div className="summary-note">Currently reachable and reporting back.</div>
+        </div>
+        <div className="summary-card">
+          <div className="summary-label">Offline</div>
+          <div className="summary-value text-rose-600">{activity.offlineAgents}</div>
+          <div className="summary-note">Agents without an active presence right now.</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
         {activity.agents.map((agent) => (
           <AgentCard key={agent.id} agent={agent} />
         ))}
-      </div>
-
-      <div className="mt-6 text-center text-sm text-gray-500">
-        Last updated: {new Date(activity.lastUpdate).toLocaleTimeString()}
       </div>
     </div>
   );

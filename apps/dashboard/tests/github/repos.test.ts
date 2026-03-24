@@ -1,11 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { getRepoHealth } from "@/lib/github/repos";
+import { applyRepoQuery, getAllRepos, getRepoHealth, normalizeRepoQuery } from "@/lib/github/repos";
+import { clearTtlCache } from "@/lib/github/cache";
 import * as client from "@/lib/github/client";
 
 // Mock Octokit
 const mockOctokit = {
   repos: {
     get: vi.fn(),
+    listForUser: vi.fn(),
   },
   pulls: {
     list: vi.fn(),
@@ -21,6 +23,7 @@ const mockOctokit = {
 describe("getRepoHealth", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearTtlCache();
     vi.spyOn(client, "getOctokit").mockReturnValue(mockOctokit as any);
   });
   
@@ -72,5 +75,115 @@ describe("getRepoHealth", () => {
     });
     
     await expect(getRepoHealth("test", "repo")).rejects.toThrow("Rate limited");
+  });
+
+  it("normalizes query parameters", () => {
+    expect(
+      normalizeRepoQuery({
+        limit: "all",
+        sort: "stars",
+        order: "asc",
+        filter: "open_prs",
+        language: "TypeScript",
+      })
+    ).toEqual({
+      limit: "all",
+      sort: "stars",
+      order: "asc",
+      filter: "open_prs",
+      language: "TypeScript",
+    });
+  });
+
+  it("applies filter, sort and limit in memory", () => {
+    const repos = [
+      {
+        owner: "test",
+        repo: "alpha",
+        default_branch: "main",
+        html_url: "https://github.com/test/alpha",
+        ci_status: "success",
+        open_pr_count: 0,
+        failing_checks_count: 0,
+        last_workflow_run: null,
+        updated_at: "2024-01-01T00:00:00Z",
+        stars: 2,
+        language: "TypeScript",
+      },
+      {
+        owner: "test",
+        repo: "beta",
+        default_branch: "main",
+        html_url: "https://github.com/test/beta",
+        ci_status: "failure",
+        open_pr_count: 2,
+        failing_checks_count: 1,
+        last_workflow_run: null,
+        updated_at: "2024-01-03T00:00:00Z",
+        stars: 10,
+        language: "TypeScript",
+      },
+      {
+        owner: "test",
+        repo: "gamma",
+        default_branch: "main",
+        html_url: "https://github.com/test/gamma",
+        ci_status: "pending",
+        open_pr_count: 1,
+        failing_checks_count: 0,
+        last_workflow_run: null,
+        updated_at: "2024-01-02T00:00:00Z",
+        stars: 5,
+        language: "Go",
+      },
+    ];
+
+    const filtered = applyRepoQuery(repos, {
+      limit: 1,
+      sort: "stars",
+      order: "desc",
+      filter: "open_prs",
+      language: "TypeScript",
+    });
+
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0]?.repo).toBe("beta");
+  });
+
+  it("fetches all user repos with pagination and caches the snapshot", async () => {
+    mockOctokit.repos.listForUser
+      .mockResolvedValueOnce({
+        data: [
+          { owner: { login: "test" }, name: "repo-one" },
+          { owner: { login: "test" }, name: "repo-two" },
+        ],
+      })
+      .mockResolvedValueOnce({ data: [] });
+
+    mockOctokit.repos.get.mockImplementation(({ repo }: { repo: string }) =>
+      Promise.resolve({
+        data: {
+          default_branch: "main",
+          html_url: `https://github.com/test/${repo}`,
+          updated_at: "2024-01-01T00:00:00Z",
+          description: `${repo} description`,
+          stargazers_count: repo === "repo-one" ? 1 : 2,
+          language: "TypeScript",
+          pushed_at: "2024-01-01T01:00:00Z",
+        },
+      })
+    );
+
+    mockOctokit.pulls.list.mockResolvedValue({ data: [] });
+    mockOctokit.actions.listWorkflowRunsForRepo.mockResolvedValue({ data: { workflow_runs: [] } });
+    mockOctokit.checks.listForRef.mockResolvedValue({ data: { check_runs: [] } });
+
+    const first = await getAllRepos("test");
+    const second = await getAllRepos("test");
+
+    expect(first.repos).toHaveLength(2);
+    expect(first.cacheState).toBe("miss");
+    expect(second.cacheState).toBe("hit");
+    expect(mockOctokit.repos.listForUser).toHaveBeenCalledTimes(1);
   });
 });

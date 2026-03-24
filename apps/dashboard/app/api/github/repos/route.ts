@@ -1,40 +1,48 @@
 import { NextResponse } from "next/server";
-import { getOctokit } from "@/lib/github/client";
-import { getRepoHealth } from "@/lib/github/repos";
+import { applyRepoQuery, getAllRepos, normalizeRepoQuery, resolveRepoOwner } from "@/lib/github/repos";
+import type { RepoHealthResponse } from "@/lib/github/types";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const octokit = getOctokit();
-
-    // Fetch 10 most recently updated repos for LanNguyenSi
-    const { data: userRepos } = await octokit.repos.listForUser({
-      username: "LanNguyenSi",
-      sort: "updated",
-      direction: "desc",
-      per_page: 10,
-      type: "owner",
+    const { searchParams } = new URL(request.url);
+    const owner = resolveRepoOwner(searchParams.get("owner") ?? undefined);
+    const query = normalizeRepoQuery({
+      limit: searchParams.get("limit") ?? undefined,
+      sort: searchParams.get("sort") ?? undefined,
+      order: searchParams.get("order") ?? undefined,
+      filter: searchParams.get("filter") ?? undefined,
+      language: searchParams.get("language") ?? undefined,
     });
 
-    const healthResults = await Promise.allSettled(
-      userRepos.map((r) => getRepoHealth(r.owner.login, r.name))
-    );
+    const snapshot = await getAllRepos(owner);
+    const filteredRepos = applyRepoQuery(snapshot.repos, { ...query, limit: "all" });
+    const repos =
+      query.limit === "all" ? filteredRepos : filteredRepos.slice(0, query.limit);
 
-    const repos = healthResults
-      .filter((r) => r.status === "fulfilled")
-      .map((r) => (r as PromiseFulfilledResult<any>).value);
-
-    const errors = healthResults
-      .filter((r) => r.status === "rejected")
-      .map((r) => (r as PromiseRejectedResult).reason.message);
-
-    return NextResponse.json({
+    const response: RepoHealthResponse = {
       repos,
-      errors: errors.length > 0 ? errors : undefined,
-    });
+      errors: snapshot.errors.length > 0 ? snapshot.errors : undefined,
+      meta: {
+        owner,
+        total: snapshot.repos.length,
+        filtered: filteredRepos.length,
+        returned: repos.length,
+        limit: query.limit,
+        sort: query.sort,
+        order: query.order,
+        filter: query.filter,
+        language: query.language,
+        cache: snapshot.cacheState,
+        fetchedAt: snapshot.fetchedAt,
+      },
+    };
+
+    return NextResponse.json(response);
   } catch (error: any) {
+    const status = error.message?.startsWith("Invalid ") ? 400 : 500;
     return NextResponse.json(
       { error: error.message || "Failed to fetch repos" },
-      { status: 500 }
+      { status }
     );
   }
 }

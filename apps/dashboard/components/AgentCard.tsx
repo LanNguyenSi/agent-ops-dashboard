@@ -8,11 +8,11 @@ export function AgentCard({ agent }: AgentCardProps) {
   const getStatusColor = (status: Agent["status"]) => {
     switch (status) {
       case "online":
-        return "bg-green-100 text-green-800 border-green-300";
+        return "bg-emerald-50 text-emerald-700 border-emerald-200";
       case "offline":
-        return "bg-red-100 text-red-800 border-red-300";
+        return "bg-rose-50 text-rose-700 border-rose-200";
       case "idle":
-        return "bg-yellow-100 text-yellow-800 border-yellow-300";
+        return "bg-amber-50 text-amber-700 border-amber-200";
     }
   };
 
@@ -38,14 +38,17 @@ export function AgentCard({ agent }: AgentCardProps) {
   };
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <h3 className="text-xl font-bold text-gray-900">{agent.name}</h3>
-          <p className="text-sm text-gray-500">{agent.platform} {agent.version}</p>
+    <article className="data-card p-6">
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <span className="pill-label">Agent</span>
+            <p className="text-sm text-slate-500">{agent.platform} {agent.version}</p>
+          </div>
+          <h3 className="truncate text-xl font-semibold tracking-tight text-slate-950">{agent.name}</h3>
         </div>
         <span
-          className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${getStatusColor(
+          className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium capitalize ${getStatusColor(
             agent.status
           )}`}
         >
@@ -54,30 +57,26 @@ export function AgentCard({ agent }: AgentCardProps) {
       </div>
 
       {agent.lastMessage && (
-        <div className="mb-4">
-          <p className="text-sm text-gray-600 italic line-clamp-2">
+        <div className="mb-5 rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4">
+          <p className="line-clamp-2 text-sm italic leading-6 text-slate-600">
             &ldquo;{agent.lastMessage}&rdquo;
           </p>
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="mt-2 text-xs uppercase tracking-[0.14em] text-slate-400">
             {formatTimestamp(agent.lastMessageAt)}
           </p>
         </div>
       )}
 
       <div className="grid grid-cols-2 gap-4 text-sm">
-        <div>
-          <span className="text-gray-600">Uptime:</span>
-          <span className="ml-2 font-medium text-gray-900">
-            {formatUptime(agent.uptime)}
-          </span>
+        <div className="rounded-2xl border border-slate-200/70 bg-white/75 p-4">
+          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Uptime</div>
+          <div className="mt-2 text-lg font-semibold text-slate-900">{formatUptime(agent.uptime)}</div>
         </div>
-        <div>
-          <span className="text-gray-600">Connected:</span>
-          <span className="ml-2 font-medium text-gray-900">
-            {formatTimestamp(agent.connectedAt)}
-          </span>
+        <div className="rounded-2xl border border-slate-200/70 bg-white/75 p-4">
+          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Connected</div>
+          <div className="mt-2 text-lg font-semibold text-slate-900">{formatTimestamp(agent.connectedAt)}</div>
         </div>
       </div>
-    </div>
+    </article>
   );
 }
