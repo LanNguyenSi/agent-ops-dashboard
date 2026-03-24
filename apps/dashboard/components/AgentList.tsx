@@ -5,11 +5,7 @@ import { AgentCard } from "./AgentCard";
 import { useGatewaySSE } from "@/lib/agents/gateway-sse";
 import type { AgentActivity } from "@/lib/agents/types";
 
-const GATEWAY_URL =
-  typeof window !== "undefined"
-    ? (process.env.NEXT_PUBLIC_GATEWAY_URL ?? "")
-    : "";
-
+const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL ?? "";
 const GATEWAY_AVAILABLE = GATEWAY_URL !== "";
 
 export function AgentList() {
@@ -17,37 +13,34 @@ export function AgentList() {
   const [fallback, setFallback] = useState<AgentActivity | null>(null);
   const [fallbackLoading, setFallbackLoading] = useState(false);
 
-  // Load fallback (Triologue/mock) when gateway not configured or SSE fails
   useEffect(() => {
-    if (!GATEWAY_AVAILABLE || sseError) {
-      setFallbackLoading(true);
+    // Load fallback when: no gateway configured, SSE error, or SSE connected but empty
+    const needsFallback = !GATEWAY_AVAILABLE || !!sseError || (connected && !sseActivity);
+    if (!needsFallback) return;
+
+    setFallbackLoading(true);
+    fetch("/api/agents")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { setFallback(data); setFallbackLoading(false); })
+      .catch(() => setFallbackLoading(false));
+
+    const interval = setInterval(() => {
       fetch("/api/agents")
         .then((r) => r.ok ? r.json() : null)
-        .then((data) => {
-          setFallback(data);
-          setFallbackLoading(false);
-        })
-        .catch(() => setFallbackLoading(false));
+        .then((data) => { if (data) setFallback(data); })
+        .catch(() => {});
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [sseError, connected, sseActivity]);
 
-      // Poll every 30s as fallback
-      const interval = setInterval(() => {
-        fetch("/api/agents")
-          .then((r) => r.ok ? r.json() : null)
-          .then((data) => data && setFallback(data))
-          .catch(() => {});
-      }, 30_000);
-      return () => clearInterval(interval);
-    }
-  }, [sseError]);
-
-  const activity = (GATEWAY_AVAILABLE ? sseActivity : null) ?? fallback;
+  const activity: AgentActivity | null = (GATEWAY_AVAILABLE ? sseActivity : null) ?? fallback;
   const loading = !activity && (fallbackLoading || (GATEWAY_AVAILABLE && !connected && !sseError));
 
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
         <div className="text-gray-600">
-          {GATEWAY_AVAILABLE ? "Connecting to agent-ops gateway..." : "Loading agents..."}
+          {GATEWAY_AVAILABLE ? "Connecting to gateway..." : "Loading agents..."}
         </div>
       </div>
     );
@@ -62,11 +55,9 @@ export function AgentList() {
           </div>
         )}
         <div className="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center text-gray-600">
-          No agents registered yet.{" "}
+          No agents registered yet.
           {GATEWAY_AVAILABLE && (
-            <>
-              Run <code className="font-mono text-sm">agent-ops register --name &lt;name&gt;</code> to add one.
-            </>
+            <> Run <code className="font-mono text-sm">agent-ops register --name &lt;name&gt;</code></>
           )}
         </div>
       </div>
@@ -75,19 +66,13 @@ export function AgentList() {
 
   return (
     <div>
-      {/* Connection status */}
       <div className="flex items-center gap-2 mb-4 text-sm">
-        <span
-          className={`inline-block w-2 h-2 rounded-full ${
-            connected && GATEWAY_AVAILABLE ? "bg-green-500" : "bg-yellow-500"
-          }`}
-        />
+        <span className={`inline-block w-2 h-2 rounded-full ${connected && GATEWAY_AVAILABLE ? "bg-green-500" : "bg-yellow-500"}`} />
         <span className="text-gray-500">
           {connected && GATEWAY_AVAILABLE ? "Live (SSE)" : "Polling (Triologue)"}
         </span>
       </div>
 
-      {/* Stats Summary */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
           <div className="text-3xl font-bold text-gray-900">{activity.totalAgents}</div>
@@ -103,14 +88,12 @@ export function AgentList() {
         </div>
       </div>
 
-      {/* Agent Cards */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {activity.agents.map((agent) => (
           <AgentCard key={agent.id} agent={agent} />
         ))}
       </div>
 
-      {/* Last Update */}
       <div className="mt-6 text-center text-sm text-gray-500">
         Last updated: {new Date(activity.lastUpdate).toLocaleTimeString()}
       </div>
