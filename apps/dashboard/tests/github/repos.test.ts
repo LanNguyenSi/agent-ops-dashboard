@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { applyRepoQuery, getAllRepos, getRepoHealth, normalizeRepoQuery } from "@/lib/github/repos";
+import { applyRepoQuery, getAllRepos, getRepoHealth, normalizeRepoQuery, paginateRepos } from "@/lib/github/repos";
 import { clearTtlCache } from "@/lib/github/cache";
 import * as client from "@/lib/github/client";
 
@@ -7,6 +7,7 @@ import * as client from "@/lib/github/client";
 const mockOctokit = {
   repos: {
     get: vi.fn(),
+    listForAuthenticatedUser: vi.fn(),
     listForUser: vi.fn(),
   },
   pulls: {
@@ -81,6 +82,7 @@ describe("getRepoHealth", () => {
     expect(
       normalizeRepoQuery({
         limit: "all",
+        page: "2",
         sort: "stars",
         order: "asc",
         filter: "open_prs",
@@ -88,11 +90,24 @@ describe("getRepoHealth", () => {
       })
     ).toEqual({
       limit: "all",
+      page: 2,
       sort: "stars",
       order: "asc",
       filter: "open_prs",
       language: "TypeScript",
     });
+  });
+
+  it("paginates filtered repositories with page metadata", () => {
+    const paginated = paginateRepos(["a", "b", "c", "d", "e"], 2, 2);
+
+    expect(paginated.items).toEqual(["c", "d"]);
+    expect(paginated.page).toBe(2);
+    expect(paginated.totalPages).toBe(3);
+    expect(paginated.hasPreviousPage).toBe(true);
+    expect(paginated.hasNextPage).toBe(true);
+    expect(paginated.rangeStart).toBe(3);
+    expect(paginated.rangeEnd).toBe(4);
   });
 
   it("applies filter, sort and limit in memory", () => {
