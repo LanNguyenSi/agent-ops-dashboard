@@ -15,6 +15,7 @@ const REPO_BATCH_SIZE = 10;
 
 const DEFAULT_QUERY_OPTIONS: RepoQueryOptions = {
   limit: 10,
+  page: 1,
   sort: "updated",
   order: "desc",
   filter: "all",
@@ -139,6 +140,7 @@ export async function getAllRepos(owner: string): Promise<{
 
 export function normalizeRepoQuery(raw: Partial<Record<keyof RepoQueryOptions, string | number | undefined>>): RepoQueryOptions {
   const limit = parseLimit(raw.limit);
+  const page = parsePage(raw.page);
   const sort = parseSort(raw.sort);
   const order = parseOrder(raw.order);
   const filter = parseFilter(raw.filter);
@@ -146,6 +148,7 @@ export function normalizeRepoQuery(raw: Partial<Record<keyof RepoQueryOptions, s
 
   return {
     limit,
+    page,
     sort,
     order,
     filter,
@@ -178,6 +181,35 @@ export function applyRepoQuery(repos: RepoHealth[], options: RepoQueryOptions): 
   }
 
   return filtered.slice(0, options.limit);
+}
+
+export function paginateRepos<T>(items: T[], page: number, limit: number | "all") {
+  if (limit === "all") {
+    return {
+      items,
+      page: 1,
+      totalPages: 1,
+      hasPreviousPage: false,
+      hasNextPage: false,
+      rangeStart: items.length === 0 ? 0 : 1,
+      rangeEnd: items.length,
+    };
+  }
+
+  const totalPages = Math.max(1, Math.ceil(items.length / limit));
+  const safePage = Math.min(page, totalPages);
+  const startIndex = (safePage - 1) * limit;
+  const pagedItems = items.slice(startIndex, startIndex + limit);
+
+  return {
+    items: pagedItems,
+    page: safePage,
+    totalPages,
+    hasPreviousPage: safePage > 1,
+    hasNextPage: safePage < totalPages,
+    rangeStart: pagedItems.length === 0 ? 0 : startIndex + 1,
+    rangeEnd: pagedItems.length === 0 ? 0 : startIndex + pagedItems.length,
+  };
 }
 
 export function resolveRepoOwner(explicitOwner?: string): string {
@@ -287,6 +319,19 @@ function parseLimit(rawLimit: string | number | undefined): number | "all" {
   const parsed = typeof rawLimit === "number" ? rawLimit : Number.parseInt(rawLimit, 10);
   if (!Number.isInteger(parsed) || parsed < 1 || parsed > 100) {
     throw new Error("Invalid limit. Use 1-100 or 'all'.");
+  }
+
+  return parsed;
+}
+
+function parsePage(rawPage: string | number | undefined): number {
+  if (rawPage === undefined) {
+    return DEFAULT_QUERY_OPTIONS.page;
+  }
+
+  const parsed = typeof rawPage === "number" ? rawPage : Number.parseInt(rawPage, 10);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new Error("Invalid page. Use an integer >= 1.");
   }
 
   return parsed;
