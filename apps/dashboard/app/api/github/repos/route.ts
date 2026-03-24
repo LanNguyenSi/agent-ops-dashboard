@@ -1,38 +1,34 @@
 import { NextResponse } from "next/server";
+import { getOctokit } from "@/lib/github/client";
 import { getRepoHealth } from "@/lib/github/repos";
 
 export async function GET() {
   try {
-    const reposEnv = process.env.GITHUB_REPOS;
-    
-    if (!reposEnv) {
-      return NextResponse.json(
-        { error: "GITHUB_REPOS environment variable not set" },
-        { status: 500 }
-      );
-    }
-    
-    const repos = reposEnv.split(",").map((r) => r.trim());
+    const octokit = getOctokit();
+
+    // Fetch 10 most recently updated repos for LanNguyenSi
+    const { data: userRepos } = await octokit.repos.listForUser({
+      username: "LanNguyenSi",
+      sort: "updated",
+      direction: "desc",
+      per_page: 10,
+      type: "owner",
+    });
+
     const healthResults = await Promise.allSettled(
-      repos.map(async (repoString) => {
-        const [owner, repo] = repoString.split("/");
-        if (!owner || !repo) {
-          throw new Error(`Invalid repo format: ${repoString}`);
-        }
-        return getRepoHealth(owner, repo);
-      })
+      userRepos.map((r) => getRepoHealth(r.owner.login, r.name))
     );
-    
-    const successfulResults = healthResults
-      .filter((result) => result.status === "fulfilled")
-      .map((result) => (result as PromiseFulfilledResult<any>).value);
-    
+
+    const repos = healthResults
+      .filter((r) => r.status === "fulfilled")
+      .map((r) => (r as PromiseFulfilledResult<any>).value);
+
     const errors = healthResults
-      .filter((result) => result.status === "rejected")
-      .map((result) => (result as PromiseRejectedResult).reason.message);
-    
+      .filter((r) => r.status === "rejected")
+      .map((r) => (r as PromiseRejectedResult).reason.message);
+
     return NextResponse.json({
-      repos: successfulResults,
+      repos,
       errors: errors.length > 0 ? errors : undefined,
     });
   } catch (error: any) {
