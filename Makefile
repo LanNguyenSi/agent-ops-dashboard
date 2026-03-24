@@ -1,4 +1,4 @@
-.PHONY: install hooks dev dev-docker docker-up docker-down build test lint format ci clean help
+.PHONY: install hooks dev dev-docker docker-up docker-down build test lint format ci clean deploy deploy-pull logs health help
 
 # Default target
 .DEFAULT_GOAL := help
@@ -48,3 +48,18 @@ ci: format-check lint test build ## Run all CI checks (format, lint, test, build
 
 clean: ## Remove build artifacts and dependencies
 	rm -rf node_modules .next dist build coverage
+
+# Production deployment targets
+
+deploy: ## Deploy to production (rebuild + restart)
+	docker compose -f docker-compose.prod.yml up -d --build
+
+deploy-pull: ## Pull latest code and deploy (for VPS)
+	git pull origin master
+	docker compose -f docker-compose.prod.yml up -d --build
+
+logs: ## Show production logs (tail 200 lines, follow)
+	docker compose -f docker-compose.prod.yml logs --tail=200 -f
+
+health: ## Check production health endpoint
+	@curl -s http://localhost:3000/api/health | jq . || echo "Health check failed"
