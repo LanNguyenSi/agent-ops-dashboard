@@ -19,6 +19,7 @@ export interface Alert {
   source: string;
   repository?: string;
   url?: string;
+  ruleId?: string; // ID of the rule that generated this alert
   createdAt: string;
   acknowledgedAt?: string;
   resolvedAt?: string;
