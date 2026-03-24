@@ -56,7 +56,7 @@ export function AgentCard({ agent }: AgentCardProps) {
       {agent.lastMessage && (
         <div className="mb-4">
           <p className="text-sm text-gray-600 italic line-clamp-2">
-            "{agent.lastMessage}"
+            &ldquo;{agent.lastMessage}&rdquo;
           </p>
           <p className="text-xs text-gray-400 mt-1">
             {formatTimestamp(agent.lastMessageAt)}
