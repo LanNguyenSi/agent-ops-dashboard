@@ -90,7 +90,7 @@ export function RepoCard({ repo }: { repo: RepoHealth }) {
         )}
         {typeof repo.stars === "number" && (
           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">
-            Stars {repo.stars}
+            {repo.stars} stars
           </span>
         )}
         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">

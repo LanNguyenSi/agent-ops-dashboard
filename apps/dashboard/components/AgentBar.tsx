@@ -89,8 +89,10 @@ export function AgentBar() {
     <div className="agent-bar-wrapper">
       <button
         onClick={() => setExpanded(!expanded)}
+        onKeyDown={(e) => { if (e.key === "Escape" && expanded) { e.preventDefault(); setExpanded(false); } }}
         className="agent-bar-toggle"
         aria-expanded={expanded}
+        aria-label={`Toggle agent panel: ${activity.totalAgents} agents, ${activity.onlineAgents} online`}
       >
         <span className="flex items-center gap-2">
           <span className="text-sm font-medium text-slate-600">
