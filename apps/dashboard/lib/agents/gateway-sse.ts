@@ -104,10 +104,11 @@ export function useGatewaySSE(): {
     };
   }, []);
 
-  const activity =
-    agentMap.size > 0 || connected
-      ? toActivity(Array.from(agentMap.values()))
-      : null;
+  const activity = connected
+    ? toActivity(Array.from(agentMap.values()))
+    : agentMap.size > 0
+    ? toActivity(Array.from(agentMap.values()))
+    : null;
 
   return { activity, connected, error };
 }

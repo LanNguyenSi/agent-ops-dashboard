@@ -19,6 +19,7 @@ services:
       - "traefik.http.routers.agent-ops-gateway.middlewares=gateway-strip"
       - "traefik.http.middlewares.gateway-strip.stripprefix.prefixes=/gateway"
       - "traefik.http.services.agent-ops-gateway.loadbalancer.server.port=3001"
+      - "traefik.http.services.agent-ops-gateway.loadbalancer.responseforwarding.flushinterval=1ms"
 
   app:
     build:
