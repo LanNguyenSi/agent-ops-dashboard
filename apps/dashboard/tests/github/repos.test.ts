@@ -96,7 +96,7 @@ describe("getRepoHealth", () => {
   });
 
   it("applies filter, sort and limit in memory", () => {
-    const repos = [
+    const repos: import("@/lib/github/types").RepoHealth[] = [
       {
         owner: "test",
         repo: "alpha",
