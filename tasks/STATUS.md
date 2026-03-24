@@ -4,6 +4,13 @@ Updated: 2026-03-24
 
 ## Completed
 
+### Task 017: Dependabot CVE Alerts in Dashboard
+- Status: done
+- Branch: `task/017-dependabot-cve-dashboard`
+- Scope: repo health now includes Dependabot vulnerability counts, `/api/github/repos` supports `filter=vulnerable` and returns `meta.vulnerableCount`, and the dashboard shows clickable vulnerability badges on repo cards
+- Verification: `npm test --workspace=apps/dashboard -- tests/github/repos.test.ts` passed; `npm run build --workspace=apps/dashboard` passed
+- Note: task file removed after completion
+
 ### Task 016: GitHub Repos API — Filter, Sort, Pagination + Cache
 - Status: done
 - Branch: `feat/dashboard-polish`

@@ -19,6 +19,7 @@ const mockOctokit = {
   checks: {
     listForRef: vi.fn(),
   },
+  request: vi.fn(),
 };
 
 describe("getRepoHealth", () => {
@@ -60,6 +61,14 @@ describe("getRepoHealth", () => {
     mockOctokit.checks.listForRef.mockResolvedValue({
       data: { check_runs: [] },
     });
+
+    mockOctokit.request.mockResolvedValue({
+      data: [
+        { security_advisory: { severity: "critical" } },
+        { security_advisory: { severity: "high" } },
+        { security_advisory: { severity: "high" } },
+      ],
+    });
     
     const health = await getRepoHealth("test", "repo");
     
@@ -67,6 +76,34 @@ describe("getRepoHealth", () => {
     expect(health.repo).toBe("repo");
     expect(health.ci_status).toBe("success");
     expect(health.failing_checks_count).toBe(0);
+    expect(health.vulnerabilities).toEqual({
+      total: 3,
+      critical: 1,
+      high: 2,
+      medium: 0,
+      low: 0,
+    });
+  });
+
+  it("gracefully ignores inaccessible dependabot alerts", async () => {
+    mockOctokit.repos.get.mockResolvedValue({
+      data: {
+        default_branch: "main",
+        html_url: "https://github.com/test/repo",
+        updated_at: "2024-01-01T00:00:00Z",
+      },
+    });
+    mockOctokit.pulls.list.mockResolvedValue({ data: [] });
+    mockOctokit.actions.listWorkflowRunsForRepo.mockResolvedValue({ data: { workflow_runs: [] } });
+    mockOctokit.checks.listForRef.mockResolvedValue({ data: { check_runs: [] } });
+    mockOctokit.request.mockRejectedValue({
+      status: 404,
+      response: { headers: {} },
+    });
+
+    const health = await getRepoHealth("test", "repo");
+
+    expect(health.vulnerabilities).toBeUndefined();
   });
   
   it("handles rate limiting", async () => {
@@ -85,7 +122,7 @@ describe("getRepoHealth", () => {
         page: "2",
         sort: "stars",
         order: "asc",
-        filter: "open_prs",
+        filter: "vulnerable",
         language: "TypeScript",
       })
     ).toEqual({
@@ -93,7 +130,7 @@ describe("getRepoHealth", () => {
       page: 2,
       sort: "stars",
       order: "asc",
-      filter: "open_prs",
+      filter: "vulnerable",
       language: "TypeScript",
     });
   });
@@ -124,6 +161,13 @@ describe("getRepoHealth", () => {
         updated_at: "2024-01-01T00:00:00Z",
         stars: 2,
         language: "TypeScript",
+        vulnerabilities: {
+          total: 0,
+          critical: 0,
+          high: 0,
+          medium: 0,
+          low: 0,
+        },
       },
       {
         owner: "test",
@@ -137,6 +181,13 @@ describe("getRepoHealth", () => {
         updated_at: "2024-01-03T00:00:00Z",
         stars: 10,
         language: "TypeScript",
+        vulnerabilities: {
+          total: 2,
+          critical: 1,
+          high: 1,
+          medium: 0,
+          low: 0,
+        },
       },
       {
         owner: "test",
@@ -150,6 +201,13 @@ describe("getRepoHealth", () => {
         updated_at: "2024-01-02T00:00:00Z",
         stars: 5,
         language: "Go",
+        vulnerabilities: {
+          total: 1,
+          critical: 0,
+          high: 0,
+          medium: 1,
+          low: 0,
+        },
       },
     ];
 
@@ -158,7 +216,7 @@ describe("getRepoHealth", () => {
       page: 1,
       sort: "stars",
       order: "desc",
-      filter: "open_prs",
+      filter: "vulnerable",
       language: "TypeScript",
     });
 
@@ -193,6 +251,7 @@ describe("getRepoHealth", () => {
     mockOctokit.pulls.list.mockResolvedValue({ data: [] });
     mockOctokit.actions.listWorkflowRunsForRepo.mockResolvedValue({ data: { workflow_runs: [] } });
     mockOctokit.checks.listForRef.mockResolvedValue({ data: { check_runs: [] } });
+    mockOctokit.request.mockResolvedValue({ data: [] });
 
     const first = await getAllRepos("test");
     const second = await getAllRepos("test");
