@@ -2,64 +2,101 @@
 
 import { useEffect, useState } from "react";
 import { AgentCard } from "./AgentCard";
-import { useGatewaySSE } from "@/lib/agents/gateway-sse";
-import type { AgentActivity } from "@/lib/agents/types";
+import type { AgentActivity, Agent } from "@/lib/agents/types";
 
-const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL ?? "";
-const GATEWAY_AVAILABLE = GATEWAY_URL !== "";
+interface GatewayAgent {
+  id: string;
+  name: string;
+  status: "online" | "offline" | "idle" | "busy";
+  lastSeen: string;
+  currentTask?: string;
+  tags: string[];
+  registeredAt: string;
+}
+
+function toAgentActivity(agents: GatewayAgent[]): AgentActivity {
+  const mapped: Agent[] = agents.map((g) => ({
+    id: g.id,
+    name: g.name,
+    status: g.status === "busy" ? "online" : g.status,
+    lastMessage: g.currentTask || null,
+    lastMessageAt: g.lastSeen,
+    connectedAt: g.registeredAt,
+    uptime: Date.now() - new Date(g.registeredAt).getTime(),
+    platform: g.tags.join(", ") || "agent-ops",
+  }));
+  return {
+    agents: mapped,
+    totalAgents: mapped.length,
+    onlineAgents: mapped.filter((a) => a.status === "online").length,
+    offlineAgents: mapped.filter((a) => a.status === "offline").length,
+    lastUpdate: new Date().toISOString(),
+  };
+}
 
 export function AgentList() {
-  const { activity: sseActivity, connected, error: sseError } = useGatewaySSE();
-  const [fallback, setFallback] = useState<AgentActivity | null>(null);
-  const [fallbackLoading, setFallbackLoading] = useState(false);
+  const [activity, setActivity] = useState<AgentActivity | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [source, setSource] = useState<"gateway" | "triologue">("gateway");
 
   useEffect(() => {
-    // Load fallback when: no gateway configured, SSE error, or SSE connected but empty
-    const needsFallback = !GATEWAY_AVAILABLE || !!sseError || (connected && !sseActivity);
-    if (!needsFallback) return;
+    async function fetchAgents() {
+      // Try gateway proxy first
+      try {
+        const res = await fetch("/api/gateway/agents");
+        if (res.ok) {
+          const agents: GatewayAgent[] = await res.json();
+          setActivity(toAgentActivity(agents));
+          setSource("gateway");
+          setError(null);
+          setLoading(false);
+          return;
+        }
+      } catch {}
 
-    setFallbackLoading(true);
-    fetch("/api/agents")
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => { setFallback(data); setFallbackLoading(false); })
-      .catch(() => setFallbackLoading(false));
+      // Fallback: Triologue /api/agents
+      try {
+        const res = await fetch("/api/agents");
+        if (res.ok) {
+          const data = await res.json();
+          setActivity(data);
+          setSource("triologue");
+          setError(null);
+          setLoading(false);
+          return;
+        }
+      } catch {}
 
-    const interval = setInterval(() => {
-      fetch("/api/agents")
-        .then((r) => r.ok ? r.json() : null)
-        .then((data) => { if (data) setFallback(data); })
-        .catch(() => {});
-    }, 30_000);
+      setError("Could not reach agent data source");
+      setLoading(false);
+    }
+
+    fetchAgents();
+    const interval = setInterval(fetchAgents, 15_000);
     return () => clearInterval(interval);
-  }, [sseError, connected, sseActivity]);
-
-  const activity: AgentActivity | null = (GATEWAY_AVAILABLE ? sseActivity : null) ?? fallback;
-  const loading = !activity && (fallbackLoading || (GATEWAY_AVAILABLE && !connected && !sseError));
+  }, []);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
-        <div className="text-gray-600">
-          {GATEWAY_AVAILABLE ? "Connecting to gateway..." : "Loading agents..."}
-        </div>
+        <div className="text-gray-600">Loading agents...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
+        Error: {error}
       </div>
     );
   }
 
   if (!activity || activity.agents.length === 0) {
     return (
-      <div className="space-y-4">
-        {sseError && GATEWAY_AVAILABLE && (
-          <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
-            ⚠️ {sseError}
-          </div>
-        )}
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center text-gray-600">
-          No agents registered yet.
-          {GATEWAY_AVAILABLE && (
-            <> Run <code className="font-mono text-sm">agent-ops register --name &lt;name&gt;</code></>
-          )}
-        </div>
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center text-gray-600">
+        No agents registered yet.
       </div>
     );
   }
@@ -67,9 +104,9 @@ export function AgentList() {
   return (
     <div>
       <div className="flex items-center gap-2 mb-4 text-sm">
-        <span className={`inline-block w-2 h-2 rounded-full ${connected && GATEWAY_AVAILABLE ? "bg-green-500" : "bg-yellow-500"}`} />
+        <span className={`inline-block w-2 h-2 rounded-full ${source === "gateway" ? "bg-green-500" : "bg-yellow-500"}`} />
         <span className="text-gray-500">
-          {connected && GATEWAY_AVAILABLE ? "Live (SSE)" : "Polling (Triologue)"}
+          {source === "gateway" ? "agent-ops-gateway" : "Triologue fallback"}
         </span>
       </div>
 
