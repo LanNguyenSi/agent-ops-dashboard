@@ -11,7 +11,7 @@ Operational dashboard for AI agents and CI/CD pipelines.
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Agent Activity | ✅ Live | via `agent-ops-gateway` REST API, 15s polling |
-| GitHub Repo Health | ✅ Live | 10 most recently active repos, dynamic via GitHub API |
+| GitHub Repo Health | ✅ Live | all owner repos with filtering, sorting, pagination, and cached GitHub API aggregation |
 | CI Status | ✅ Live | Workflow runs, failing checks per repo |
 | Pipeline History | 🟡 Mock | Needs real CI data source |
 | Alerts | 🟡 Mock | Needs Prisma DB + rule engine |
@@ -35,14 +35,19 @@ All data the dashboard shows is also available as JSON — directly usable by AI
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /api/github/repos` | 10 most active repos with CI status, open PRs, failing checks |
+| `GET /api/github/repos` | owner repo health with `limit`, `sort`, `order`, `filter`, `language`, and cached aggregation |
 | `GET /gateway/agents` | All registered agents with status + current task |
 | `GET /gateway/agents/:id` | Single agent details |
 
 **Example — agent checks for failing CI before opening a PR:**
 ```bash
-curl https://ops.opentriologue.ai/api/github/repos | \
+curl "https://ops.opentriologue.ai/api/github/repos?filter=failing&limit=all" | \
   jq '[.repos[] | select(.ci_status == "failure") | {repo, failing_checks_count}]'
+```
+
+**Example — top 20 repos by stars:**
+```bash
+curl "https://ops.opentriologue.ai/api/github/repos?sort=stars&limit=20" | jq '.meta'
 ```
 
 ## agent-ops-gateway API
