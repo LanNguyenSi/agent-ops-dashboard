@@ -1,6 +1,7 @@
-žée
+ï¿½ï¿½e
 node_modules/
 .env
 .env.local
 
 .next/
+*.tsbuildinfo
