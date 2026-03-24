@@ -1,6 +1,29 @@
 services:
+  gateway:
+    build:
+      context: ./packages/gateway
+      dockerfile: Dockerfile
+    container_name: agent-ops-gateway
+    restart: unless-stopped
+    environment:
+      - PORT=3001
+      - NODE_ENV=production
+    networks:
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.agent-ops-gateway.rule=Host(`ops.opentriologue.ai`) && PathPrefix(`/gateway`)"
+      - "traefik.http.routers.agent-ops-gateway.entrypoints=websecure"
+      - "traefik.http.routers.agent-ops-gateway.tls=true"
+      - "traefik.http.routers.agent-ops-gateway.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.agent-ops-gateway.middlewares=gateway-strip"
+      - "traefik.http.middlewares.gateway-strip.stripprefix.prefixes=/gateway"
+      - "traefik.http.services.agent-ops-gateway.loadbalancer.server.port=3001"
+
   app:
-    build: .
+    build:
+      context: ./apps/dashboard
+      dockerfile: Dockerfile
     container_name: agent-ops-dashboard
     restart: unless-stopped
     environment:
@@ -8,7 +31,10 @@ services:
       - HOSTNAME=0.0.0.0
       - PORT=3000
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
-      - GITHUB_REPOS=${GITHUB_REPOS:-LanNguyenSi/telerithm,LanNguyenSi/agent-ops-dashboard,LanNguyenSi/plagiarism-coach}
+      - GITHUB_REPOS=${GITHUB_REPOS:-LanNguyenSi/telerithm,LanNguyenSi/agent-ops-dashboard,LanNguyenSi/triologue,LanNguyenSi/scaffoldkit,LanNguyenSi/agent-planforge}
+      - NEXT_PUBLIC_GATEWAY_URL=https://ops.opentriologue.ai/gateway
+    depends_on:
+      - gateway
     networks:
       - traefik
     labels:
