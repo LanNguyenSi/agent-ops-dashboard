@@ -59,6 +59,42 @@ export interface RepoHealth {
   pushed_at?: string | null;
 }
 
+export type RepoSort = "updated" | "stars" | "name" | "ci_status";
+export type RepoOrder = "asc" | "desc";
+export type RepoFilter = "all" | "failing" | "open_prs";
+
+export interface RepoQueryOptions {
+  limit: number | "all";
+  sort: RepoSort;
+  order: RepoOrder;
+  filter: RepoFilter;
+  language?: string;
+}
+
+export interface RepoHealthSnapshot {
+  repos: RepoHealth[];
+  errors: string[];
+  fetchedAt: string;
+}
+
+export interface RepoHealthResponse {
+  repos: RepoHealth[];
+  errors?: string[];
+  meta: {
+    owner: string;
+    total: number;
+    filtered: number;
+    returned: number;
+    limit: number | "all";
+    sort: RepoSort;
+    order: RepoOrder;
+    filter: RepoFilter;
+    language?: string;
+    cache: "hit" | "miss" | "stale";
+    fetchedAt: string;
+  };
+}
+
 export interface GitHubRateLimit {
   limit: number;
   remaining: number;
