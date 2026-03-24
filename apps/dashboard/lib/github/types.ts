@@ -57,11 +57,18 @@ export interface RepoHealth {
   stars?: number;
   language?: string | null;
   pushed_at?: string | null;
+  vulnerabilities?: {
+    total: number;
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
 }
 
 export type RepoSort = "updated" | "stars" | "name" | "ci_status";
 export type RepoOrder = "asc" | "desc";
-export type RepoFilter = "all" | "failing" | "open_prs";
+export type RepoFilter = "all" | "failing" | "open_prs" | "vulnerable";
 
 export interface RepoQueryOptions {
   limit: number | "all";
@@ -97,6 +104,7 @@ export interface RepoHealthResponse {
     order: RepoOrder;
     filter: RepoFilter;
     language?: string;
+    vulnerableCount: number;
     cache: "hit" | "miss" | "stale";
     fetchedAt: string;
   };
