@@ -29,6 +29,22 @@ agent-ops-dashboard/          # npm workspaces monorepo
     └── client/               # @agent-ops/client — CLI + SDK for agents
 ```
 
+## Agent-queryable APIs
+
+All data the dashboard shows is also available as JSON — directly usable by AI agents.
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/github/repos` | 10 most active repos with CI status, open PRs, failing checks |
+| `GET /gateway/agents` | All registered agents with status + current task |
+| `GET /gateway/agents/:id` | Single agent details |
+
+**Example — agent checks for failing CI before opening a PR:**
+```bash
+curl https://ops.opentriologue.ai/api/github/repos | \
+  jq '[.repos[] | select(.ci_status == "failure") | {repo, failing_checks_count}]'
+```
+
 ## agent-ops-gateway API
 
 The gateway is publicly accessible at `https://ops.opentriologue.ai/gateway`.
