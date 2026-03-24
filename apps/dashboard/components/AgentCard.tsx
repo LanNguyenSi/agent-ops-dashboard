@@ -38,17 +38,17 @@ export function AgentCard({ agent }: AgentCardProps) {
   };
 
   return (
-    <article className="data-card p-6">
-      <div className="mb-5 flex items-start justify-between gap-4">
+    <article className="data-card h-full p-5">
+      <div className="mb-4 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="mb-2 flex flex-wrap items-center gap-2">
+          <div className="mb-1.5 flex flex-wrap items-center gap-2">
             <span className="pill-label">Agent</span>
-            <p className="text-sm text-slate-500">{agent.platform} {agent.version}</p>
+            <p className="text-xs text-slate-500">{agent.platform} {agent.version}</p>
           </div>
-          <h3 className="truncate text-xl font-semibold tracking-tight text-slate-950">{agent.name}</h3>
+          <h3 className="truncate text-lg font-semibold tracking-tight text-slate-950">{agent.name}</h3>
         </div>
         <span
-          className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium capitalize ${getStatusColor(
+          className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold capitalize ${getStatusColor(
             agent.status
           )}`}
         >
@@ -57,8 +57,8 @@ export function AgentCard({ agent }: AgentCardProps) {
       </div>
 
       {agent.lastMessage && (
-        <div className="mb-5 rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4">
-          <p className="line-clamp-2 text-sm italic leading-6 text-slate-600">
+        <div className="mb-4 rounded-2xl border border-slate-200/70 bg-slate-50/80 p-3.5">
+          <p className="line-clamp-2 text-sm italic leading-5 text-slate-600">
             &ldquo;{agent.lastMessage}&rdquo;
           </p>
           <p className="mt-2 text-xs uppercase tracking-[0.14em] text-slate-400">
@@ -67,14 +67,14 @@ export function AgentCard({ agent }: AgentCardProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4 text-sm">
-        <div className="rounded-2xl border border-slate-200/70 bg-white/75 p-4">
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        <div className="rounded-2xl border border-slate-200/70 bg-white/75 p-3.5">
           <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Uptime</div>
-          <div className="mt-2 text-lg font-semibold text-slate-900">{formatUptime(agent.uptime)}</div>
+          <div className="mt-1.5 text-base font-semibold text-slate-900">{formatUptime(agent.uptime)}</div>
         </div>
-        <div className="rounded-2xl border border-slate-200/70 bg-white/75 p-4">
+        <div className="rounded-2xl border border-slate-200/70 bg-white/75 p-3.5">
           <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Connected</div>
-          <div className="mt-2 text-lg font-semibold text-slate-900">{formatTimestamp(agent.connectedAt)}</div>
+          <div className="mt-1.5 text-base font-semibold text-slate-900">{formatTimestamp(agent.connectedAt)}</div>
         </div>
       </div>
     </article>

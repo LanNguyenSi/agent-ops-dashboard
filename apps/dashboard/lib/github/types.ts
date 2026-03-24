@@ -65,6 +65,7 @@ export type RepoFilter = "all" | "failing" | "open_prs";
 
 export interface RepoQueryOptions {
   limit: number | "all";
+  page: number;
   sort: RepoSort;
   order: RepoOrder;
   filter: RepoFilter;
@@ -86,6 +87,12 @@ export interface RepoHealthResponse {
     filtered: number;
     returned: number;
     limit: number | "all";
+    page: number;
+    totalPages: number;
+    hasPreviousPage: boolean;
+    hasNextPage: boolean;
+    rangeStart: number;
+    rangeEnd: number;
     sort: RepoSort;
     order: RepoOrder;
     filter: RepoFilter;
