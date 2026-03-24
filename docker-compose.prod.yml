@@ -5,6 +5,8 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=production
+      - HOSTNAME=0.0.0.0
+      - PORT=3000
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
       - GITHUB_REPOS=${GITHUB_REPOS:-LanNguyenSi/telerithm,LanNguyenSi/agent-ops-dashboard,LanNguyenSi/plagiarism-coach}
     networks:
