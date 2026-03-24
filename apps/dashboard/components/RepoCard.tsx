@@ -96,30 +96,21 @@ export function RepoCard({ repo }: { repo: RepoHealth }) {
         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
           {repo.default_branch}
         </span>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2.5 text-sm">
-        <div className="rounded-2xl border border-slate-200/70 bg-white/75 p-3">
-          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Open PRs</div>
-          {repo.open_pr_count > 0 ? (
-            <a
-              href={`${repo.html_url}/pulls`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-1.5 inline-block text-base font-semibold text-sky-700 hover:underline"
-            >
-              {repo.open_pr_count}
-            </a>
-          ) : (
-            <div className="mt-1.5 text-base font-semibold text-slate-900">0</div>
-          )}
-        </div>
-        <div className="rounded-2xl border border-slate-200/70 bg-white/75 p-3">
-          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Failing Checks</div>
-          <div className={`mt-1.5 text-base font-semibold ${repo.failing_checks_count > 0 ? "text-rose-600" : "text-slate-900"}`}>
-            {repo.failing_checks_count}
-          </div>
-        </div>
+        {repo.open_pr_count > 0 && (
+          <a
+            href={`${repo.html_url}/pulls`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-full bg-sky-50 px-2.5 py-1 font-medium text-sky-700 transition-colors hover:bg-sky-100"
+          >
+            {repo.open_pr_count} {repo.open_pr_count === 1 ? "PR" : "PRs"}
+          </a>
+        )}
+        {repo.failing_checks_count > 0 && (
+          <span className="rounded-full bg-rose-50 px-2.5 py-1 font-medium text-rose-600">
+            {repo.failing_checks_count} failing
+          </span>
+        )}
       </div>
 
       <div className="mt-auto flex items-center justify-between border-t border-slate-200/70 pt-2.5 text-xs text-slate-400">
