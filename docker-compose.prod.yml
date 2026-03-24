@@ -33,7 +33,7 @@ services:
       - PORT=3000
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
       - GITHUB_REPOS=${GITHUB_REPOS:-LanNguyenSi/telerithm,LanNguyenSi/agent-ops-dashboard,LanNguyenSi/triologue,LanNguyenSi/scaffoldkit,LanNguyenSi/agent-planforge}
-      - NEXT_PUBLIC_GATEWAY_URL=https://ops.opentriologue.ai/gateway
+      - GATEWAY_INTERNAL_URL=http://agent-ops-gateway:3001
     depends_on:
       - gateway
     networks:
