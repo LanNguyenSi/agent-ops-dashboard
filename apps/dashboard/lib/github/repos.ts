@@ -212,6 +212,36 @@ async function listAllReposForUser(owner: string): Promise<Array<{ owner: string
   const repos: Array<{ owner: string; repo: string }> = [];
   let page = 1;
 
+  // Try authenticated endpoint first (includes private repos)
+  // Falls back to public-only listForUser if token doesn't match owner
+  try {
+    while (true) {
+      const { data } = await octokit.repos.listForAuthenticatedUser({
+        sort: "updated",
+        direction: "desc",
+        per_page: 100,
+        page,
+        type: "owner",
+        affiliation: "owner",
+      });
+
+      repos.push(
+        ...data
+          .filter((r) => r.owner.login === owner)
+          .map((r) => ({ owner: r.owner.login, repo: r.name }))
+      );
+
+      if (data.length < 100) break;
+      page += 1;
+    }
+
+    if (repos.length > 0) return repos;
+  } catch {
+    // Token doesn't support authenticated user listing — fall through
+  }
+
+  // Fallback: public repos only
+  page = 1;
   while (true) {
     const { data } = await octokit.repos.listForUser({
       username: owner,
@@ -223,16 +253,10 @@ async function listAllReposForUser(owner: string): Promise<Array<{ owner: string
     });
 
     repos.push(
-      ...data.map((repository) => ({
-        owner: repository.owner.login,
-        repo: repository.name,
-      }))
+      ...data.map((r) => ({ owner: r.owner.login, repo: r.name }))
     );
 
-    if (data.length < 100) {
-      break;
-    }
-
+    if (data.length < 100) break;
     page += 1;
   }
 
