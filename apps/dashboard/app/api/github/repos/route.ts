@@ -39,6 +39,7 @@ export async function GET(request: Request) {
         order: query.order,
         filter: query.filter,
         language: query.language,
+        vulnerableCount: snapshot.repos.filter((repo) => (repo.vulnerabilities?.total ?? 0) > 0).length,
         cache: snapshot.cacheState,
         fetchedAt: snapshot.fetchedAt,
       },
