@@ -221,14 +221,10 @@ async function listAllReposForUser(owner: string): Promise<Array<{ owner: string
         direction: "desc",
         per_page: 100,
         page,
-        type: "owner",
-        affiliation: "owner",
       });
 
       repos.push(
-        ...data
-          .filter((r) => r.owner.login === owner)
-          .map((r) => ({ owner: r.owner.login, repo: r.name }))
+        ...data.map((r) => ({ owner: r.owner.login, repo: r.name }))
       );
 
       if (data.length < 100) break;
