@@ -52,6 +52,11 @@ export interface RepoHealth {
   failing_checks_count: number;
   last_workflow_run: WorkflowRun | null;
   updated_at: string;
+  // Extended info
+  description?: string | null;
+  stars?: number;
+  language?: string | null;
+  pushed_at?: string | null;
 }
 
 export interface GitHubRateLimit {
