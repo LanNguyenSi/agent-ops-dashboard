@@ -155,6 +155,7 @@ describe("getRepoHealth", () => {
 
     const filtered = applyRepoQuery(repos, {
       limit: 1,
+      page: 1,
       sort: "stars",
       order: "desc",
       filter: "open_prs",
