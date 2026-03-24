@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { RepoCard } from "./RepoCard";
+import { Select } from "./Select";
 import type { RepoHealth, RepoHealthResponse } from "@/lib/github/types";
 
 type SortOption = "updated" | "stars" | "name" | "ci_status";
@@ -20,6 +21,18 @@ const FILTER_LABELS: Record<FilterOption, string> = {
   open_prs: "Open PRs",
   vulnerable: "Vulnerable",
 };
+
+const sortOptions = (Object.keys(SORT_LABELS) as SortOption[]).map((s) => ({
+  value: s,
+  label: SORT_LABELS[s],
+}));
+
+const limitOptions = [
+  { value: "10", label: "10 repos" },
+  { value: "25", label: "25 repos" },
+  { value: "50", label: "50 repos" },
+  { value: "all", label: "All repos" },
+];
 
 export function RepoList() {
   const [repos, setRepos] = useState<RepoHealth[]>([]);
@@ -74,18 +87,19 @@ export function RepoList() {
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-3">
         {/* Filter */}
-        <div className="flex rounded-lg border border-gray-200 bg-white overflow-hidden text-sm">
+        <div className="flex rounded-lg border border-slate-200 bg-white overflow-hidden text-sm" role="group" aria-label="Filter repositories">
           {(Object.keys(FILTER_LABELS) as FilterOption[]).map((f) => (
             <button
               key={f}
+              aria-pressed={filter === f}
               onClick={() => {
                 setFilter(f);
                 setPage(1);
               }}
-              className={`px-3 py-1.5 font-medium transition-colors ${
+              className={`px-3 py-1.5 font-medium transition-colors focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-inset outline-none ${
                 filter === f
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-600 hover:bg-gray-50"
+                  ? "bg-slate-900 text-white"
+                  : "text-slate-600 hover:bg-slate-50"
               }`}
             >
               {FILTER_LABELS[f]}
@@ -94,36 +108,23 @@ export function RepoList() {
         </div>
 
         {/* Sort */}
-        <select
+        <Select
           value={sort}
-          onChange={(e) => {
-            setSort(e.target.value as SortOption);
-            setPage(1);
-          }}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 font-medium focus:outline-none"
-        >
-          {(Object.keys(SORT_LABELS) as SortOption[]).map((s) => (
-            <option key={s} value={s}>{SORT_LABELS[s]}</option>
-          ))}
-        </select>
+          onChange={(v) => { setSort(v as SortOption); setPage(1); }}
+          options={sortOptions}
+          className="w-40"
+        />
 
         {/* Limit */}
-        <select
+        <Select
           value={String(limit)}
-          onChange={(e) => {
-            setLimit(e.target.value === "all" ? "all" : Number(e.target.value));
-            setPage(1);
-          }}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 font-medium focus:outline-none"
-        >
-          <option value="10">10 repos</option>
-          <option value="25">25 repos</option>
-          <option value="50">50 repos</option>
-          <option value="all">All repos</option>
-        </select>
+          onChange={(v) => { setLimit(v === "all" ? "all" : Number(v)); setPage(1); }}
+          options={limitOptions}
+          className="w-32"
+        />
 
         {/* Cache indicator */}
-        <span className="ml-auto text-xs text-gray-400">
+        <span className="ml-auto text-xs text-slate-400">
           {cacheState === "hit" ? "⚡ cached" : cacheState === "stale" ? "⟳ refreshing" : ""}
         </span>
       </div>
@@ -135,7 +136,7 @@ export function RepoList() {
             <div className="summary-label">Showing</div>
             <div className="summary-value">
               {meta?.rangeStart ?? 0}-{meta?.rangeEnd ?? 0}
-              <span className="text-lg text-gray-400">/{meta?.filtered ?? repos.length}</span>
+              <span className="text-lg text-slate-400">/{meta?.filtered ?? repos.length}</span>
             </div>
             <div className="summary-note">matching repos</div>
           </div>
@@ -159,17 +160,17 @@ export function RepoList() {
 
       {/* Content */}
       {loading && (
-        <div className="flex items-center justify-center p-12 text-gray-500">
+        <div className="flex items-center justify-center p-12 text-slate-500">
           Loading repositories...
         </div>
       )}
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
+        <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-rose-800">
           Error: {error}
         </div>
       )}
       {!loading && !error && repos.length === 0 && (
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center text-gray-600">
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-8 text-center text-slate-600">
           No repositories match the current filter.
         </div>
       )}
