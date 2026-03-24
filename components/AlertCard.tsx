@@ -1,11 +1,15 @@
 import { AlertBadge } from "./AlertBadge";
 import type { Alert } from "@/lib/alerts/types";
+import { DEFAULT_RULES, getRuleById } from "@/lib/alerts/rules";
 
 interface AlertCardProps {
   alert: Alert;
 }
 
 export function AlertCard({ alert }: AlertCardProps) {
+  // Get rule details if this alert was triggered by a rule
+  const rule = alert.ruleId ? getRuleById(DEFAULT_RULES, alert.ruleId) : null;
+
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -39,6 +43,14 @@ export function AlertCard({ alert }: AlertCardProps) {
       <div className="flex items-center justify-between text-xs text-gray-500">
         <div>
           <span className="font-medium">{alert.source}</span>
+          {rule && (
+            <>
+              {" · "}
+              <span className="text-gray-600" title={rule.description}>
+                Rule: {rule.name}
+              </span>
+            </>
+          )}
           {alert.url && (
             <>
               {" · "}
