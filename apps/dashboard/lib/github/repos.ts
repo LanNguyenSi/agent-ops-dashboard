@@ -61,6 +61,10 @@ export async function getRepoHealth(owner: string, repo: string): Promise<RepoHe
       failing_checks_count: failingChecks.length,
       last_workflow_run: lastRun as WorkflowRun | null,
       updated_at: repository.updated_at,
+      description: repository.description,
+      stars: repository.stargazers_count,
+      language: repository.language,
+      pushed_at: repository.pushed_at,
     };
   } catch (error: any) {
     // Handle rate limiting (429 Too Many Requests or 403 Forbidden with rate limit)
