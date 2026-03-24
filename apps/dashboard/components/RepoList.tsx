@@ -5,7 +5,7 @@ import { RepoCard } from "./RepoCard";
 import type { RepoHealth, RepoHealthResponse } from "@/lib/github/types";
 
 type SortOption = "updated" | "stars" | "name" | "ci_status";
-type FilterOption = "all" | "failing" | "open_prs";
+type FilterOption = "all" | "failing" | "open_prs" | "vulnerable";
 
 const SORT_LABELS: Record<SortOption, string> = {
   updated: "Last updated",
@@ -18,6 +18,7 @@ const FILTER_LABELS: Record<FilterOption, string> = {
   all: "All",
   failing: "Failing CI",
   open_prs: "Open PRs",
+  vulnerable: "Vulnerable",
 };
 
 export function RepoList() {

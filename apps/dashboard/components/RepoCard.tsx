@@ -32,6 +32,16 @@ const LANG_COLORS: Record<string, string> = {
 
 export function RepoCard({ repo }: { repo: RepoHealth }) {
   const langColor = repo.language ? (LANG_COLORS[repo.language] ?? "bg-indigo-50 text-indigo-700") : null;
+  const vulnerabilities = repo.vulnerabilities;
+  const hasVulnerabilities = (vulnerabilities?.total ?? 0) > 0;
+  const vulnerabilityItems = vulnerabilities
+    ? [
+        vulnerabilities.critical > 0 ? { label: "critical", value: vulnerabilities.critical } : null,
+        vulnerabilities.high > 0 ? { label: "high", value: vulnerabilities.high } : null,
+        vulnerabilities.medium > 0 ? { label: "medium", value: vulnerabilities.medium } : null,
+        vulnerabilities.low > 0 ? { label: "low", value: vulnerabilities.low } : null,
+      ].filter((item): item is { label: string; value: number } => item !== null)
+    : [];
 
   return (
     <article className="data-card flex h-full flex-col gap-3 p-4">
@@ -52,9 +62,24 @@ export function RepoCard({ repo }: { repo: RepoHealth }) {
             <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-500">{repo.description}</p>
           )}
         </div>
-        <span className={`shrink-0 inline-flex items-center rounded-full border px-2 py-1 text-[11px] font-semibold ${(CI_BADGE[repo.ci_status] ?? CI_BADGE.unknown).className}`}>
-          {(CI_BADGE[repo.ci_status] ?? CI_BADGE.unknown).label}
-        </span>
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <span className={`inline-flex items-center rounded-full border px-2 py-1 text-[11px] font-semibold ${(CI_BADGE[repo.ci_status] ?? CI_BADGE.unknown).className}`}>
+            {(CI_BADGE[repo.ci_status] ?? CI_BADGE.unknown).label}
+          </span>
+          {hasVulnerabilities && (
+            <a
+              href={`${repo.html_url}/security/dependabot`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex max-w-[14rem] items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-800 transition-colors hover:border-rose-300 hover:bg-rose-100"
+              aria-label={`Open Dependabot alerts for ${repo.owner}/${repo.repo}`}
+            >
+              <span className="truncate">
+                {vulnerabilityItems.map((item) => `${item.value} ${item.label}`).join(" • ")}
+              </span>
+            </a>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-1.5 text-xs">

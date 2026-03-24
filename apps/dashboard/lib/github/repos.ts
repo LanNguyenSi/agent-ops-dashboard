@@ -12,6 +12,24 @@ import type {
 
 const REPO_CACHE_TTL_MS = 5 * 60 * 1000;
 const REPO_BATCH_SIZE = 10;
+const EMPTY_VULNERABILITY_SUMMARY = {
+  total: 0,
+  critical: 0,
+  high: 0,
+  medium: 0,
+  low: 0,
+} as const;
+
+type VulnerabilitySeverity = keyof Omit<typeof EMPTY_VULNERABILITY_SUMMARY, "total">;
+
+interface DependabotAlert {
+  security_advisory?: {
+    severity?: string | null;
+  } | null;
+  security_vulnerability?: {
+    severity?: string | null;
+  } | null;
+}
 
 const DEFAULT_QUERY_OPTIONS: RepoQueryOptions = {
   limit: 10,
@@ -27,34 +45,36 @@ export async function getRepoHealth(owner: string, repo: string): Promise<RepoHe
   try {
     // Get repository info
     const { data: repository } = await octokit.repos.get({ owner, repo });
-    
-    // Get open PRs count
-    // TODO: Add pagination support for repos with >100 open PRs
-    const { data: prs } = await octokit.pulls.list({
-      owner,
-      repo,
-      state: "open",
-      per_page: 100,
-    });
-    
-    // Get latest workflow runs
-    const { data: workflowRuns } = await octokit.actions.listWorkflowRunsForRepo({
-      owner,
-      repo,
-      per_page: 1,
-      status: "completed",
-    });
-    
+
+    const [
+      { data: prs },
+      { data: workflowRuns },
+      { data: checkRuns },
+      vulnerabilities,
+    ] = await Promise.all([
+      // TODO: Add pagination support for repos with >100 open PRs
+      octokit.pulls.list({
+        owner,
+        repo,
+        state: "open",
+        per_page: 100,
+      }),
+      octokit.actions.listWorkflowRunsForRepo({
+        owner,
+        repo,
+        per_page: 1,
+        status: "completed",
+      }),
+      octokit.checks.listForRef({
+        owner,
+        repo,
+        ref: repository.default_branch,
+        per_page: 100,
+      }),
+      getDependabotVulnerabilities(owner, repo),
+    ]);
+
     const lastRun = workflowRuns.workflow_runs[0] || null;
-    
-    // Get failing checks for latest commit
-    const { data: checkRuns } = await octokit.checks.listForRef({
-      owner,
-      repo,
-      ref: repository.default_branch,
-      per_page: 100,
-    });
-    
     const failingChecks = checkRuns.check_runs.filter(
       (check) => check.conclusion === "failure"
     );
@@ -85,6 +105,7 @@ export async function getRepoHealth(owner: string, repo: string): Promise<RepoHe
       stars: repository.stargazers_count,
       language: repository.language,
       pushed_at: repository.pushed_at,
+      vulnerabilities,
     };
   } catch (error: any) {
     // Handle rate limiting (429 Too Many Requests or 403 Forbidden with rate limit)
@@ -167,6 +188,10 @@ export function applyRepoQuery(repos: RepoHealth[], options: RepoQueryOptions): 
 
   if (options.filter === "open_prs") {
     filtered = filtered.filter((repo) => repo.open_pr_count > 0);
+  }
+
+  if (options.filter === "vulnerable") {
+    filtered = filtered.filter((repo) => (repo.vulnerabilities?.total ?? 0) > 0);
   }
 
   if (options.language) {
@@ -369,11 +394,11 @@ function parseFilter(rawFilter: string | number | undefined): RepoFilter {
   }
 
   const filter = String(rawFilter);
-  if (filter === "all" || filter === "failing" || filter === "open_prs") {
+  if (filter === "all" || filter === "failing" || filter === "open_prs" || filter === "vulnerable") {
     return filter;
   }
 
-  throw new Error("Invalid filter. Use all, failing, or open_prs.");
+  throw new Error("Invalid filter. Use all, failing, open_prs, or vulnerable.");
 }
 
 function compareRepos(left: RepoHealth, right: RepoHealth, sort: RepoSort, order: RepoOrder): number {
@@ -407,4 +432,56 @@ function rankCiStatus(status: RepoHealth["ci_status"]): number {
     case "failure":
       return 3;
   }
+}
+
+async function getDependabotVulnerabilities(owner: string, repo: string): Promise<RepoHealth["vulnerabilities"]> {
+  const octokit = getOctokit();
+
+  try {
+    const response = await octokit.request("GET /repos/{owner}/{repo}/dependabot/alerts", {
+      owner,
+      repo,
+      state: "open",
+      per_page: 100,
+    });
+
+    const summary = { ...EMPTY_VULNERABILITY_SUMMARY };
+    for (const alert of response.data as DependabotAlert[]) {
+      const severity = normalizeVulnerabilitySeverity(
+        alert.security_advisory?.severity ?? alert.security_vulnerability?.severity
+      );
+
+      if (!severity) {
+        continue;
+      }
+
+      summary.total += 1;
+      summary[severity] += 1;
+    }
+
+    return summary;
+  } catch (error: any) {
+    if (error.status === 403 && error.response?.headers["x-ratelimit-remaining"] === "0") {
+      throw error;
+    }
+
+    if (error.status === 403 || error.status === 404) {
+      return undefined;
+    }
+
+    throw error;
+  }
+}
+
+function normalizeVulnerabilitySeverity(rawSeverity: string | null | undefined): VulnerabilitySeverity | null {
+  if (!rawSeverity) {
+    return null;
+  }
+
+  const severity = rawSeverity.toLowerCase();
+  if (severity === "critical" || severity === "high" || severity === "medium" || severity === "low") {
+    return severity;
+  }
+
+  return null;
 }
