@@ -1,64 +1,112 @@
 # Agent Ops Dashboard
 
-> 🚧 **Work in Progress** — MVP with mock data. Real integrations coming.
-
 Operational dashboard for AI agents and CI/CD pipelines.
+
+## Live
+
+👉 **https://ops.opentriologue.ai**
 
 ## What it shows
 
-- **Agent Activity** — Ice, Lava, Stone status (online/offline, last message, uptime)
-- **GitHub Repository Health** — Open PRs, failing CI checks
-- **Pipeline Run History** — Pass/fail trends with Recharts charts
-- **Alerts** — CI failures, slow builds, PR backlog
+- **Agent Activity** — Live status of Ice 🧊, Lava 🌋 and other registered agents (online/offline, current task, uptime)
+- **GitHub Repository Health** — 10 most recently active repos, open PRs, CI status, language, stars
+- **Real-time Refresh** — Auto-polling every 15s
 
-## Live Demo
+## Architecture
 
-👉 https://ops.opentriologue.ai
+```
+agent-ops-dashboard/          # npm workspaces monorepo
+├── apps/
+│   └── dashboard/            # Next.js frontend (ops.opentriologue.ai)
+└── packages/
+    ├── gateway/              # Fastify REST API + SSE registry (port 3001)
+    └── client/               # @agent-ops/client — CLI + SDK for agents
+```
 
-## Current State
+## agent-ops-gateway API
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Agent Activity | 🟡 Mock data | Real: needs Triologue API |
-| GitHub Health | 🟡 Mock data | Real: set `GITHUB_TOKEN` + `GITHUB_REPOS` |
-| Pipeline History | 🟡 Mock data | Real: set `GITHUB_TOKEN` + `GITHUB_REPOS` |
-| Alerts | 🟡 Mock data | Real: needs Prisma DB + rule engine |
-| Real-time Refresh | ✅ Working | Configurable 5s/10s/30s/60s intervals |
+The gateway is publicly accessible at `https://ops.opentriologue.ai/gateway`.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/gateway/health` | GET | Gateway health + agent count |
+| `/gateway/agents` | GET | List all agents with status |
+| `/gateway/agents/:id` | GET | Single agent details |
+| `/gateway/agents/register` | POST | Register a new agent |
+| `/gateway/agents/:id/heartbeat` | POST | Send heartbeat + update task |
+| `/gateway/agents/:id/command` | POST | Send command to agent |
+| `/gateway/events` | GET | SSE stream of live events |
+
+**Example — register and send heartbeats:**
+
+```bash
+# Register
+curl -X POST https://ops.opentriologue.ai/gateway/agents/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-agent","tags":["node","telegram"]}'
+
+# Heartbeat (keep alive, update task)
+curl -X POST https://ops.opentriologue.ai/gateway/agents/<id>/heartbeat \
+  -H "Content-Type: application/json" \
+  -d '{"status":"online","currentTask":"Reviewing PR #42"}'
+
+# List all agents
+curl https://ops.opentriologue.ai/gateway/agents
+```
+
+Agents go **offline automatically** after 60s without a heartbeat.
+
+## @agent-ops/client CLI
+
+```bash
+# Install
+cd packages/client && npm install && npm run build
+npm link
+
+# Register your agent
+agent-ops register --name my-agent --tags node telegram
+
+# Heartbeat loop (every 30s, no token cost)
+agent-ops heartbeat --interval 30 --task "Active"
+
+# Check all agents
+agent-ops status
+```
+
+Config is saved to `~/.agent-ops/config.json`.
 
 ## Running locally
 
 ```bash
-npm install --legacy-peer-deps
-npm run dev
-```
+# Install all workspace deps
+npm install --workspaces --if-present
 
-## Running with real GitHub data
+# Start gateway
+npm run dev:gateway   # → http://localhost:3001
 
-```bash
-GITHUB_TOKEN=ghp_xxx \
-GITHUB_REPOS=owner/repo1,owner/repo2 \
-npm run dev
+# Start dashboard
+npm run dev           # → http://localhost:3000
 ```
 
 ## Deploy with Docker
 
 ```bash
-GITHUB_TOKEN=ghp_xxx \
-GITHUB_REPOS=owner/repo1,owner/repo2 \
-docker compose -f docker-compose.prod.yml up -d
+GITHUB_TOKEN=ghp_xxx docker compose -f docker-compose.prod.yml up -d
 ```
+
+Both services (gateway + dashboard) start automatically.
 
 ## Roadmap
 
-- [ ] Connect Triologue API for real agent status
-- [ ] Prisma DB for persistent alerts + rule engine  
-- [ ] Email/Slack notifications
+- [ ] Agent persistence (Prisma DB — survive gateway restarts)
+- [ ] SSE live feed in dashboard (Phase 4)
+- [ ] Alert rules engine (CI failures, offline agents)
 - [ ] Authentication
-- [ ] More GitHub metrics (release history, contributor activity)
+- [ ] Python SDK (@agent-ops/client-py)
 
 ## Built with
 
-Next.js · TypeScript · Tailwind CSS · Recharts · Octokit
+Next.js · TypeScript · Tailwind CSS · Recharts · Octokit · Fastify
 
 ---
 
