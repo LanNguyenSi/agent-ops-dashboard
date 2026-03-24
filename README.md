@@ -8,9 +8,15 @@ Operational dashboard for AI agents and CI/CD pipelines.
 
 ## What it shows
 
-- **Agent Activity** — Live status of Ice 🧊, Lava 🌋 and other registered agents (online/offline, current task, uptime)
-- **GitHub Repository Health** — 10 most recently active repos, open PRs, CI status, language, stars
-- **Real-time Refresh** — Auto-polling every 15s
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Agent Activity | ✅ Live | via `agent-ops-gateway` REST API, 15s polling |
+| GitHub Repo Health | ✅ Live | 10 most recently active repos, dynamic via GitHub API |
+| CI Status | ✅ Live | Workflow runs, failing checks per repo |
+| Pipeline History | 🟡 Mock | Needs real CI data source |
+| Alerts | 🟡 Mock | Needs Prisma DB + rule engine |
+| Agent Persistence | 🟡 In-memory | Gateway restart = agents lost (Phase 4: DB) |
+| SSE Live Feed | 🔜 Phase 4 | Gateway supports SSE, dashboard uses polling for now |
 
 ## Architecture
 
