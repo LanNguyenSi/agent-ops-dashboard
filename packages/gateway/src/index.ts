@@ -56,6 +56,13 @@ fastify.get('/agents', async () => {
   return registry.getAll();
 });
 
+// ── Delete agent ────────────────────────────────────────────
+fastify.delete<{ Params: { id: string } }>('/agents/:id', async (req) => {
+  const deleted = registry.delete(req.params.id);
+  if (!deleted) return { error: 'Agent not found' };
+  return { ok: true };
+});
+
 // ── Back-channel command ────────────────────────────────────
 fastify.post<{ Params: { id: string }; Body: CommandPayload }>(
   '/agents/:id/command',
