@@ -1,12 +1,19 @@
 import { Agent, AgentStatus, RegisterPayload, HeartbeatPayload } from './types.js';
 import { randomUUID } from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const OFFLINE_TIMEOUT_MS = 60_000; // 1 minute without heartbeat = offline
+const PERSIST_FILE = process.env.REGISTRY_FILE ?? path.join(process.cwd(), 'agent-registry.json');
 
 export class AgentRegistry {
   private agents = new Map<string, Agent>();
   private timers = new Map<string, NodeJS.Timeout>();
   private listeners: Array<(agent: Agent, event: string) => void> = [];
+
+  constructor() {
+    this.loadFromDisk();
+  }
 
   register(payload: RegisterPayload): Agent {
     const id = randomUUID();
@@ -22,6 +29,7 @@ export class AgentRegistry {
     };
     this.agents.set(id, agent);
     this.resetTimer(id);
+    this.saveToDisk();
     this.emit(agent, 'agent:registered');
     return agent;
   }
@@ -38,6 +46,7 @@ export class AgentRegistry {
     };
     this.agents.set(id, updated);
     this.resetTimer(id);
+    this.saveToDisk();
     this.emit(updated, 'agent:updated');
     return updated;
   }
@@ -48,6 +57,20 @@ export class AgentRegistry {
 
   get(id: string): Agent | undefined {
     return this.agents.get(id);
+  }
+
+  delete(id: string): boolean {
+    const agent = this.agents.get(id);
+    if (!agent) return false;
+
+    const timer = this.timers.get(id);
+    if (timer) clearTimeout(timer);
+    this.timers.delete(id);
+
+    this.agents.delete(id);
+    this.saveToDisk();
+    this.emit(agent, 'agent:deleted');
+    return true;
   }
 
   onUpdate(listener: (agent: Agent, event: string) => void) {
@@ -69,10 +92,39 @@ export class AgentRegistry {
       if (agent) {
         const offline = { ...agent, status: 'offline' as AgentStatus, lastSeen: new Date().toISOString() };
         this.agents.set(id, offline);
+        this.saveToDisk();
         this.emit(offline, 'agent:offline');
       }
     }, OFFLINE_TIMEOUT_MS);
 
     this.timers.set(id, timer);
+  }
+
+  private loadFromDisk() {
+    try {
+      if (fs.existsSync(PERSIST_FILE)) {
+        const data = fs.readFileSync(PERSIST_FILE, 'utf-8');
+        const stored = JSON.parse(data) as Agent[];
+        for (const agent of stored) {
+          this.agents.set(agent.id, agent);
+          // Don't restart timers for offline agents, only online ones
+          if (agent.status === 'online') {
+            this.resetTimer(agent.id);
+          }
+        }
+        console.log(`✅ Loaded ${stored.length} agent(s) from ${PERSIST_FILE}`);
+      }
+    } catch (error) {
+      console.error('⚠️ Failed to load registry from disk:', error);
+    }
+  }
+
+  private saveToDisk() {
+    try {
+      const agents = Array.from(this.agents.values());
+      fs.writeFileSync(PERSIST_FILE, JSON.stringify(agents, null, 2), 'utf-8');
+    } catch (error) {
+      console.error('⚠️ Failed to save registry to disk:', error);
+    }
   }
 }
