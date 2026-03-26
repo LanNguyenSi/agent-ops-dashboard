@@ -17,6 +17,23 @@ services:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_GATEWAY_URL=http://gateway:3001
+      - GATEWAY_INTERNAL_URL=http://gateway:3001
     depends_on:
       - gateway
     restart: unless-stopped
+    networks:
+      - default
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.agent-ops.entrypoints=websecure"
+      - "traefik.http.routers.agent-ops.rule=Host(`ops.opentriologue.ai`)"
+      - "traefik.http.routers.agent-ops.tls=true"
+      - "traefik.http.routers.agent-ops.tls.certresolver=letsencrypt"
+      - "traefik.http.services.agent-ops.loadbalancer.server.port=3000"
+      - "traefik.docker.network=traefik"
+
+networks:
+  default:
+  traefik:
+    external: true
