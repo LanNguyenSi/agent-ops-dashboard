@@ -106,11 +106,10 @@ export class AgentRegistry {
         const data = fs.readFileSync(PERSIST_FILE, 'utf-8');
         const stored = JSON.parse(data) as Agent[];
         for (const agent of stored) {
-          this.agents.set(agent.id, agent);
-          // Don't restart timers for offline agents, only online ones
-          if (agent.status === 'online') {
-            this.resetTimer(agent.id);
-          }
+          // Mark all agents as offline on startup — they must heartbeat to come online
+          // This prevents stale "online" entries when gateway restarts
+          const restored: Agent = { ...agent, status: 'offline' };
+          this.agents.set(restored.id, restored);
         }
         console.log(`✅ Loaded ${stored.length} agent(s) from ${PERSIST_FILE}`);
       }
