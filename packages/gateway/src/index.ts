@@ -2,6 +2,9 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { AgentRegistry } from './registry.js';
 import { RegisterPayload, HeartbeatPayload, CommandPayload } from './types.js';
+import { hasDatabase } from './db/pool.js';
+import { runMigrations } from './db/migrate.js';
+import { registerStateRoutes } from './state/state.routes.js';
 
 const fastify = Fastify({ logger: true });
 const registry = new AgentRegistry();
@@ -119,6 +122,20 @@ fastify.get('/events', async (req, reply) => {
 
   await new Promise(() => {}); // keep handler open
 });
+
+// ── State Store (PostgreSQL) ─────────────────────────────────
+if (hasDatabase()) {
+  try {
+    await runMigrations();
+    registerStateRoutes(fastify);
+    console.log('[state] State store routes registered');
+  } catch (err) {
+    console.error('[state] Failed to initialize state store:', err);
+    // Non-fatal: gateway still starts without state store
+  }
+} else {
+  console.log('[state] DATABASE_URL not set — state store disabled');
+}
 
 // ── Start ────────────────────────────────────────────────────
 const port = Number(process.env.PORT ?? 3001);
