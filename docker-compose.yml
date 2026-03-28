@@ -1,4 +1,19 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: agent_ops
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   gateway:
     build:
       context: ./packages/gateway
@@ -7,9 +22,10 @@ services:
       - "3001:3001"
     environment:
       - PORT=3001
-      - REGISTRY_FILE=/data/agent-registry.json
-    volumes:
-      - gateway_data:/data
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/agent_ops
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   dashboard:
@@ -39,10 +55,10 @@ services:
       - "traefik.http.services.agent-ops.loadbalancer.server.port=3000"
       - "traefik.docker.network=traefik"
 
+volumes:
+  postgres_data:
+
 networks:
   default:
   traefik:
     external: true
-
-volumes:
-  gateway_data:
