@@ -1,15 +1,18 @@
 "use client";
 
+import { useMemo } from "react";
+import { Select } from "@/components/Select";
 import type { ActivityFilters } from "./useActivityStream";
 
-const EVENT_TYPES = [
-  "agent.registered",
-  "agent.heartbeat",
-  "agent.disconnected",
-  "state.set",
-  "state.deleted",
-  "state.cas.success",
-  "state.cas.conflict",
+const EVENT_TYPE_OPTIONS = [
+  { value: "", label: "All Event Types" },
+  { value: "agent.registered", label: "agent.registered" },
+  { value: "agent.heartbeat", label: "agent.heartbeat" },
+  { value: "agent.disconnected", label: "agent.disconnected" },
+  { value: "state.set", label: "state.set" },
+  { value: "state.deleted", label: "state.deleted" },
+  { value: "state.cas.success", label: "state.cas.success" },
+  { value: "state.cas.conflict", label: "state.cas.conflict" },
 ];
 
 interface EventFiltersProps {
@@ -20,37 +23,33 @@ interface EventFiltersProps {
 }
 
 export function EventFilters({ filters, onChange, agentIds, agentNames = {} }: EventFiltersProps) {
-  return (
-    <div className="flex flex-wrap gap-3 mb-4">
-      <select
-        value={filters.agentId ?? ""}
-        onChange={(e) =>
-          onChange({ ...filters, agentId: e.target.value || undefined })
-        }
-        className="rounded border border-gray-300 px-3 py-1.5 text-sm bg-white"
-      >
-        <option value="">All Agents</option>
-        {agentIds.map((id) => (
-          <option key={id} value={id}>{agentNames[id] ?? id.slice(0, 8) + "…"}
-            {id}
-          </option>
-        ))}
-      </select>
+  const agentOptions = useMemo(
+    () => [
+      { value: "", label: "All Agents" },
+      ...agentIds.map((id) => ({
+        value: id,
+        label: agentNames[id] ?? id.slice(0, 8) + "…",
+      })),
+    ],
+    [agentIds, agentNames],
+  );
 
-      <select
+  return (
+    <div className="flex flex-wrap gap-3 mb-5">
+      <Select
+        value={filters.agentId ?? ""}
+        onChange={(v) => onChange({ ...filters, agentId: v || undefined })}
+        options={agentOptions}
+        placeholder="All Agents"
+        className="w-44"
+      />
+      <Select
         value={filters.eventType ?? ""}
-        onChange={(e) =>
-          onChange({ ...filters, eventType: e.target.value || undefined })
-        }
-        className="rounded border border-gray-300 px-3 py-1.5 text-sm bg-white"
-      >
-        <option value="">All Event Types</option>
-        {EVENT_TYPES.map((t) => (
-          <option key={t} value={t}>
-            {t}
-          </option>
-        ))}
-      </select>
+        onChange={(v) => onChange({ ...filters, eventType: v || undefined })}
+        options={EVENT_TYPE_OPTIONS}
+        placeholder="All Event Types"
+        className="w-48"
+      />
     </div>
   );
 }

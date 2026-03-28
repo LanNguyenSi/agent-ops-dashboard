@@ -45,13 +45,16 @@ export function ActivityFeed() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Activity Feed</h2>
+      <div className="section-header">
+        <div>
+          <p className="section-kicker">Live Stream</p>
+          <h2 className="section-title">Activity Feed</h2>
+        </div>
         <div className="flex items-center gap-3">
           <ConnectionBadge isConnected={isConnected} error={error} />
           <button
             onClick={clearEvents}
-            className="text-xs text-gray-500 hover:text-gray-700 underline"
+            className="pill-label cursor-pointer hover:border-[var(--line-strong)] transition-colors"
           >
             Clear
           </button>
@@ -66,11 +69,11 @@ export function ActivityFeed() {
       />
 
       {events.length === 0 ? (
-        <div className="text-center text-gray-400 py-12 text-sm">
-          {isConnected ? "Waiting for events..." : "Connecting..."}
+        <div className="empty-state">
+          {isConnected ? "Waiting for events…" : "Connecting…"}
         </div>
       ) : (
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           {events.map((event) => (
             <EventCard key={event.id} event={event} agentNames={agentNames} />
           ))}

@@ -6,13 +6,22 @@ export const metadata = {
 
 export default function ActivityPage() {
   return (
-    <main className="max-w-4xl mx-auto px-4 py-8">
-      <div className="mb-6">
-        <a href="/" className="text-sm text-gray-500 hover:text-gray-700">
-          ← Back to Dashboard
-        </a>
-      </div>
-      <ActivityFeed />
+    <main className="dashboard-shell">
+      <header className="dashboard-topbar surface-card">
+        <div className="flex items-center gap-6">
+          <h1 className="topbar-title">Agent Ops</h1>
+          <nav className="flex items-center gap-4 text-sm">
+            <a href="/" className="text-gray-500 hover:text-gray-900 transition-colors">
+              Dashboard
+            </a>
+            <span className="font-medium text-gray-900">Activity</span>
+          </nav>
+        </div>
+      </header>
+
+      <section className="dashboard-section surface-card">
+        <ActivityFeed />
+      </section>
     </main>
   );
 }
