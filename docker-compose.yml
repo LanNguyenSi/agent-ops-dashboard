@@ -7,6 +7,9 @@ services:
       - "3001:3001"
     environment:
       - PORT=3001
+      - REGISTRY_FILE=/data/agent-registry.json
+    volumes:
+      - gateway_data:/data
     restart: unless-stopped
 
   dashboard:
@@ -40,3 +43,6 @@ networks:
   default:
   traefik:
     external: true
+
+volumes:
+  gateway_data:
