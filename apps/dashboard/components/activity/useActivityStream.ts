@@ -22,29 +22,62 @@ export interface UseActivityStreamResult {
   clearEvents: () => void;
 }
 
-// Use the Next.js proxy route so the browser doesn't need direct gateway access
 const GATEWAY_URL = "";
 const MAX_EVENTS = 200;
 const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 30_000;
+const STORAGE_KEY = "ops-activity-events";
 
-export function useActivityStream(
-  filters: ActivityFilters = {}
-): UseActivityStreamResult {
-  const [events, setEvents] = useState<AgentEvent[]>([]);
+const EVENT_TYPES = [
+  "agent.registered",
+  "agent.heartbeat",
+  "agent.disconnected",
+  "state.set",
+  "state.deleted",
+  "state.cas.success",
+  "state.cas.conflict",
+  "message",
+];
+
+function loadStoredEvents(): AgentEvent[] {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as AgentEvent[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveEvents(events: AgentEvent[]) {
+  try {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+  } catch {}
+}
+
+export function useActivityStream(filters: ActivityFilters): UseActivityStreamResult {
+  const [events, setEvents] = useState<AgentEvent[]>(() => loadStoredEvents());
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const lastEventIdRef = useRef<number | null>(null);
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const reconnectAttemptsRef = useRef(0);
   const esRef = useRef<EventSource | null>(null);
+  const lastEventIdRef = useRef<number | null>(
+    events.length > 0 ? events[0].id : null
+  );
+  const reconnectAttemptsRef = useRef(0);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearEvents = useCallback(() => {
+    setEvents([]);
+    lastEventIdRef.current = null;
+    sessionStorage.removeItem(STORAGE_KEY);
+  }, []);
 
   const connect = useCallback(() => {
     const params = new URLSearchParams();
     if (filters.agentId) params.set("agentId", filters.agentId);
     if (filters.eventType) params.set("eventType", filters.eventType);
+    // Pass last seen event ID so server replays missed events on reconnect
     if (lastEventIdRef.current != null) {
-      params.set("lastEventId", String(lastEventIdRef.current));
+      params.set("cursor", String(lastEventIdRef.current));
     }
 
     const url = `${GATEWAY_URL}/api/gateway/events/stream?${params.toString()}`;
@@ -57,25 +90,15 @@ export function useActivityStream(
       reconnectAttemptsRef.current = 0;
     };
 
-    // Gateway sends named events (e.g. "agent.heartbeat") — must use addEventListener
-    // es.onmessage only catches unnamed "message" events
-    const EVENT_TYPES = [
-      "agent.registered",
-      "agent.heartbeat",
-      "agent.disconnected",
-      "state.set",
-      "state.deleted",
-      "state.cas.success",
-      "state.cas.conflict",
-      "message",
-    ];
     const handleEvent = (event: MessageEvent) => {
       try {
         const data: AgentEvent = JSON.parse(event.data as string);
         lastEventIdRef.current = data.id;
         setEvents((prev) => {
           const updated = [data, ...prev];
-          return updated.slice(0, MAX_EVENTS);
+          const sliced = updated.slice(0, MAX_EVENTS);
+          saveEvents(sliced);
+          return sliced;
         });
       } catch {
         // Ignore malformed events
@@ -99,12 +122,10 @@ export function useActivityStream(
   useEffect(() => {
     connect();
     return () => {
-      esRef.current?.close();
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+      esRef.current?.close();
     };
   }, [connect]);
-
-  const clearEvents = useCallback(() => setEvents([]), []);
 
   return { events, isConnected, error, clearEvents };
 }
