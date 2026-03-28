@@ -47,7 +47,7 @@ export function useActivityStream(
       params.set("lastEventId", String(lastEventIdRef.current));
     }
 
-    const url = `${GATEWAY_URL}/api/events/stream?${params.toString()}`;
+    const url = `${GATEWAY_URL}/api/gateway/events/stream?${params.toString()}`;
     const es = new EventSource(url);
     esRef.current = es;
 
