@@ -16,9 +16,10 @@ interface EventFiltersProps {
   filters: ActivityFilters;
   onChange: (filters: ActivityFilters) => void;
   agentIds: string[];
+  agentNames?: Record<string, string>;
 }
 
-export function EventFilters({ filters, onChange, agentIds }: EventFiltersProps) {
+export function EventFilters({ filters, onChange, agentIds, agentNames = {} }: EventFiltersProps) {
   return (
     <div className="flex flex-wrap gap-3 mb-4">
       <select
@@ -30,7 +31,7 @@ export function EventFilters({ filters, onChange, agentIds }: EventFiltersProps)
       >
         <option value="">All Agents</option>
         {agentIds.map((id) => (
-          <option key={id} value={id}>
+          <option key={id} value={id}>{agentNames[id] ?? id.slice(0, 8) + "…"}
             {id}
           </option>
         ))}

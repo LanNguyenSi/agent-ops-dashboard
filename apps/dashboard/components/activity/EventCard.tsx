@@ -14,15 +14,20 @@ const EVENT_COLORS: Record<string, string> = {
 
 interface EventCardProps {
   event: AgentEvent;
+  agentNames?: Record<string, string>;
 }
 
-export function EventCard({ event }: EventCardProps) {
+export function EventCard({ event, agentNames = {} }: EventCardProps) {
   const colorClass =
     EVENT_COLORS[event.eventType] ?? "border-l-gray-300 bg-gray-50";
   const time = new Date(event.createdAt).toLocaleTimeString();
   const payloadStr = JSON.stringify(event.payload);
   const truncated =
     payloadStr.length > 120 ? payloadStr.slice(0, 117) + "..." : payloadStr;
+
+  const agentLabel = event.agentId
+    ? (agentNames[event.agentId] ?? event.agentId.slice(0, 8) + "…")
+    : null;
 
   return (
     <div
@@ -33,9 +38,9 @@ export function EventCard({ event }: EventCardProps) {
       </span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          {event.agentId && (
+          {agentLabel && (
             <span className="text-xs font-semibold text-gray-700 bg-gray-200 rounded px-1.5 py-0.5">
-              {event.agentId}
+              {agentLabel}
             </span>
           )}
           <span className="text-xs font-mono font-medium text-gray-800">
