@@ -5,6 +5,8 @@ import { RegisterPayload, HeartbeatPayload, CommandPayload } from './types.js';
 import { hasDatabase } from './db/pool.js';
 import { runMigrations } from './db/migrate.js';
 import { registerStateRoutes } from './state/state.routes.js';
+import { registerEventRoutes } from './events/event.routes.js';
+import { eventService } from './events/event.service.js';
 
 const fastify = Fastify({ logger: true });
 const registry = new AgentRegistry();
@@ -34,6 +36,9 @@ fastify.get('/health', async () => {
 // ── Agent Registration ──────────────────────────────────────
 fastify.post<{ Body: RegisterPayload }>('/agents/register', async (req, reply) => {
   const agent = registry.register(req.body);
+  await eventService.emit('agent.registered', agent.id, {
+    agentId: agent.id, name: agent.name, tags: (req.body as any).tags, meta: (req.body as any).meta,
+  }).catch(() => {});
   return reply.code(201).send(agent);
 });
 
@@ -43,6 +48,9 @@ fastify.post<{ Params: { id: string }; Body: HeartbeatPayload }>(
   async (req, reply) => {
     const agent = registry.heartbeat(req.params.id, req.body);
     if (!agent) return reply.code(404).send({ error: 'Agent not found' });
+    await eventService.emit('agent.heartbeat', req.params.id, {
+      agentId: req.params.id, status: (req.body as any).status ?? 'online',
+    }).catch(() => {});
     return agent;
   }
 );
@@ -123,18 +131,21 @@ fastify.get('/events', async (req, reply) => {
   await new Promise(() => {}); // keep handler open
 });
 
-// ── State Store (PostgreSQL) ─────────────────────────────────
+// ── PostgreSQL Features (State Store + Activity Feed) ────────
 if (hasDatabase()) {
   try {
     await runMigrations();
     registerStateRoutes(fastify);
-    console.log('[state] State store routes registered');
+    registerEventRoutes(fastify);
+    console.log('[db] State store + Activity Feed routes registered');
   } catch (err) {
-    console.error('[state] Failed to initialize state store:', err);
-    // Non-fatal: gateway still starts without state store
+    console.error('[db] Failed to initialize DB features:', err);
+    // Non-fatal: gateway still starts without DB features
   }
 } else {
-  console.log('[state] DATABASE_URL not set — state store disabled');
+  // Still register event routes (in-memory SSE works without DB)
+  registerEventRoutes(fastify);
+  console.log('[db] DATABASE_URL not set — running in memory-only mode');
 }
 
 // ── Start ────────────────────────────────────────────────────

@@ -1,14 +1,13 @@
 import { getPool } from "../db/pool.js";
+import { eventService } from "../events/event.service.js";
 import type { StateEntry, StateKeyInfo } from "./state.schema.js";
 
-/** Stub event emitter — replaced by Task 003 implementation */
 async function emitEvent(
   type: string,
-  _agentId: string | null,
-  _data: Record<string, unknown>
+  agentId: string | null,
+  data: Record<string, unknown>
 ): Promise<void> {
-  // Task 003 will replace this with real event emission
-  console.log(`[events:stub] ${type}`, _data);
+  await eventService.emit(type, agentId, data);
 }
 
 function rowToEntry(row: Record<string, unknown>): StateEntry {
