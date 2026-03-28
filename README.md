@@ -1,22 +1,20 @@
 # Agent Ops Dashboard
 
-Operational dashboard for AI agents and CI/CD pipelines.
+Operational dashboard for AI agents — live agent registry, shared state store, activity feed, and GitHub repo health.
 
 ## Live
 
 👉 **https://ops.opentriologue.ai**
 
-## What it shows
+## Features
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Agent Activity | ✅ Live | via `agent-ops-gateway` REST API, 15s polling |
-| GitHub Repo Health | ✅ Live | all owner repos with filtering, sorting, pagination, and cached GitHub API aggregation |
-| CI Status | ✅ Live | Workflow runs, failing checks per repo |
-| Pipeline History | 🟡 Mock | Needs real CI data source |
-| Alerts | 🟡 Mock | Needs Prisma DB + rule engine |
-| Agent Persistence | 🟡 In-memory | Gateway restart = agents lost (Phase 4: DB) |
-| SSE Live Feed | 🔜 Phase 4 | Gateway supports SSE, dashboard uses polling for now |
+| Agent Registry | ✅ Live | Register, heartbeat, auto-offline after 60s |
+| Activity Feed | ✅ Live | SSE live stream — heartbeats, state changes, registrations |
+| Shared State Store | ✅ Live | Namespaced KV with atomic CAS (compare-and-swap) |
+| GitHub Repo Health | ✅ Live | All owner repos with CI status, filtering, sorting |
+| MCP Integration | ✅ Live | See [ops-mcp](https://github.com/LanNguyenSi/ops-mcp) |
 
 ## Architecture
 
@@ -25,115 +23,111 @@ agent-ops-dashboard/          # npm workspaces monorepo
 ├── apps/
 │   └── dashboard/            # Next.js frontend (ops.opentriologue.ai)
 └── packages/
-    ├── gateway/              # Fastify REST API + SSE registry (port 3001)
-    └── client/               # @agent-ops/client — CLI + SDK for agents
+    └── gateway/              # Fastify REST API + SSE + State Store (port 3001)
 ```
 
-## Agent-queryable APIs
+## MCP Integration
 
-All data the dashboard shows is also available as JSON — directly usable by AI agents.
+AI agents (Claude Code, Codex, etc.) can connect to the gateway directly via MCP:
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /api/github/repos` | owner repo health with `limit`, `sort`, `order`, `filter`, `language`, and cached aggregation |
-| `GET /gateway/agents` | All registered agents with status + current task |
-| `GET /gateway/agents/:id` | Single agent details |
-
-**Example — agent checks for failing CI before opening a PR:**
-```bash
-curl "https://ops.opentriologue.ai/api/github/repos?filter=failing&limit=all" | \
-  jq '[.repos[] | select(.ci_status == "failure") | {repo, failing_checks_count}]'
+```json
+{
+  "mcpServers": {
+    "ops": {
+      "command": "npx",
+      "args": ["@opentriologue/mcp", "--gateway", "https://ops.opentriologue.ai"]
+    }
+  }
+}
 ```
 
-**Example — top 20 repos by stars:**
-```bash
-curl "https://ops.opentriologue.ai/api/github/repos?sort=stars&limit=20" | jq '.meta'
-```
+👉 **See [ops-mcp](https://github.com/LanNguyenSi/ops-mcp)** for the full MCP server package with 9 tools:
+`ops_register`, `ops_heartbeat`, `ops_whoami`, `ops_list_agents`, `ops_state_get`, `ops_state_set`, `ops_state_cas`, `ops_state_list`, `ops_state_delete`
 
-## agent-ops-gateway API
+## Gateway API
 
-The gateway is publicly accessible at `https://ops.opentriologue.ai/gateway`.
+The gateway is publicly accessible at `https://ops.opentriologue.ai`.
+
+### Agents
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/gateway/health` | GET | Gateway health + agent count |
-| `/gateway/agents` | GET | List all agents with status |
-| `/gateway/agents/:id` | GET | Single agent details |
-| `/gateway/agents/register` | POST | Register a new agent |
-| `/gateway/agents/:id/heartbeat` | POST | Send heartbeat + update task |
-| `/gateway/agents/:id/command` | POST | Send command to agent |
-| `/gateway/events` | GET | SSE stream of live events |
+| `/health` | GET | Gateway health + agent count |
+| `/agents` | GET | List all agents with status |
+| `/agents/:id` | GET | Single agent details |
+| `/agents/register` | POST | Register a new agent |
+| `/agents/:id/heartbeat` | POST | Send heartbeat |
+| `/agents/:id/unregister` | DELETE | Go offline |
+
+### State Store
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/state/:ns` | GET | List all keys in namespace |
+| `/api/state/:ns/:key` | GET | Get a value |
+| `/api/state/:ns/:key` | PUT | Set a value (upsert) |
+| `/api/state/:ns/:key` | DELETE | Delete a value |
+| `/api/state/:ns/:key/cas` | POST | Atomic compare-and-swap |
+
+### Activity Feed
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/events` | GET | Query events (filter by agentId, eventType, cursor) |
+| `/api/events/stream` | GET | SSE live stream with `Last-Event-ID` replay |
+| `/api/events/stats` | GET | Subscriber count |
 
 **Example — register and send heartbeats:**
 
 ```bash
 # Register
-curl -X POST https://ops.opentriologue.ai/gateway/agents/register \
+curl -X POST https://ops.opentriologue.ai/agents/register \
   -H "Content-Type: application/json" \
-  -d '{"name":"my-agent","tags":["node","telegram"]}'
+  -d '{"name":"my-agent","tags":["node"]}'
 
-# Heartbeat (keep alive, update task)
-curl -X POST https://ops.opentriologue.ai/gateway/agents/<id>/heartbeat \
+# Heartbeat
+curl -X POST https://ops.opentriologue.ai/agents/<id>/heartbeat \
   -H "Content-Type: application/json" \
   -d '{"status":"online","currentTask":"Reviewing PR #42"}'
 
-# List all agents
-curl https://ops.opentriologue.ai/gateway/agents
+# Shared state (lock a file)
+curl -X PUT https://ops.opentriologue.ai/api/state/locks/src-app-ts \
+  -H "Content-Type: application/json" \
+  -d '{"value":{"lockedBy":"ice","since":"2026-03-28T12:00:00Z"},"updatedBy":"ice"}'
 ```
-
-Agents go **offline automatically** after 60s without a heartbeat.
-
-## @agent-ops/client CLI
-
-```bash
-# Install
-cd packages/client && npm install && npm run build
-npm link
-
-# Register your agent
-agent-ops register --name my-agent --tags node telegram
-
-# Heartbeat loop (every 30s, no token cost)
-agent-ops heartbeat --interval 30 --task "Active"
-
-# Check all agents
-agent-ops status
-```
-
-Config is saved to `~/.agent-ops/config.json`.
 
 ## Running locally
 
 ```bash
 # Install all workspace deps
-npm install --workspaces --if-present
+npm install
 
-# Start gateway
-npm run dev:gateway   # → http://localhost:3001
+# Start gateway (requires PostgreSQL — see docker-compose.yml)
+npm run dev --workspace=packages/gateway
 
 # Start dashboard
-npm run dev           # → http://localhost:3000
+npm run dev --workspace=apps/dashboard
 ```
 
 ## Deploy with Docker
 
 ```bash
-GITHUB_TOKEN=ghp_xxx docker compose -f docker-compose.prod.yml up -d
+docker compose up -d
 ```
 
-Both services (gateway + dashboard) start automatically.
+Starts PostgreSQL, gateway, and dashboard. Migrations run automatically on gateway startup.
 
-## Roadmap
+## Environment Variables
 
-- [ ] Agent persistence (Prisma DB — survive gateway restarts)
-- [ ] SSE live feed in dashboard (Phase 4)
-- [ ] Alert rules engine (CI failures, offline agents)
-- [ ] Authentication
-- [ ] Python SDK (@agent-ops/client-py)
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | — | PostgreSQL connection string |
+| `GITHUB_TOKEN` | — | GitHub PAT for repo health dashboard |
+| `GITHUB_OWNER` | `LanNguyenSi` | GitHub org/user to scan |
 
 ## Built with
 
-Next.js · TypeScript · Tailwind CSS · Recharts · Octokit · Fastify
+Next.js · TypeScript · Tailwind CSS · Fastify · PostgreSQL · Recharts · Octokit
 
 ---
 
