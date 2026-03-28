@@ -57,7 +57,19 @@ export function useActivityStream(
       reconnectAttemptsRef.current = 0;
     };
 
-    es.onmessage = (event) => {
+    // Gateway sends named events (e.g. "agent.heartbeat") — must use addEventListener
+    // es.onmessage only catches unnamed "message" events
+    const EVENT_TYPES = [
+      "agent.registered",
+      "agent.heartbeat",
+      "agent.disconnected",
+      "state.set",
+      "state.deleted",
+      "state.cas.success",
+      "state.cas.conflict",
+      "message",
+    ];
+    const handleEvent = (event: MessageEvent) => {
       try {
         const data: AgentEvent = JSON.parse(event.data as string);
         lastEventIdRef.current = data.id;
@@ -69,6 +81,7 @@ export function useActivityStream(
         // Ignore malformed events
       }
     };
+    EVENT_TYPES.forEach((type) => es.addEventListener(type, handleEvent as EventListener));
 
     es.onerror = () => {
       setIsConnected(false);
