@@ -22,8 +22,8 @@ export interface UseActivityStreamResult {
   clearEvents: () => void;
 }
 
-const GATEWAY_URL =
-  process.env.NEXT_PUBLIC_GATEWAY_URL ?? "http://localhost:3001";
+// Use the Next.js proxy route so the browser doesn't need direct gateway access
+const GATEWAY_URL = "";
 const MAX_EVENTS = 200;
 const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 30_000;
