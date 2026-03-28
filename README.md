@@ -125,6 +125,10 @@ Starts PostgreSQL, gateway, and dashboard. Migrations run automatically on gatew
 | `GITHUB_TOKEN` | — | GitHub PAT for repo health dashboard |
 | `GITHUB_OWNER` | `LanNguyenSi` | GitHub org/user to scan |
 
+## Related
+
+- **[repo-dashboard](https://github.com/LanNguyenSi/repo-dashboard)** — lightweight CLI alternative: `repo-dash LanNguyenSi` for a quick terminal overview of repos, PRs and CI status
+
 ## Built with
 
 Next.js · TypeScript · Tailwind CSS · Fastify · PostgreSQL · Recharts · Octokit
