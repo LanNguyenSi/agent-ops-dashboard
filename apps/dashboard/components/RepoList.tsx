@@ -40,6 +40,7 @@ export function RepoList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cacheState, setCacheState] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   // Filter/sort state
   const [sort, setSort] = useState<SortOption>("updated");
@@ -47,35 +48,46 @@ export function RepoList() {
   const [limit, setLimit] = useState<number | "all">(10);
   const [page, setPage] = useState(1);
 
-  useEffect(() => {
-    async function fetchRepos() {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams({
-          sort,
-          order: "desc",
-          filter,
-          limit: String(limit),
-          page: String(page),
-        });
-        const response = await fetch(`/api/github/repos?${params}`);
-        const data = await response.json();
+  const fetchRepos = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        sort,
+        order: "desc",
+        filter,
+        limit: String(limit),
+        page: String(page),
+      });
+      const response = await fetch(`/api/github/repos?${params}`);
+      const data = await response.json();
 
-        if (!response.ok) throw new Error(data.error || "Failed to fetch repos");
+      if (!response.ok) throw new Error(data.error || "Failed to fetch repos");
 
-        setRepos(data.repos || []);
-        setMeta(data.meta ?? null);
-        setCacheState(data.meta?.cache ?? null);
-        setError(null);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+      setRepos(data.repos || []);
+      setMeta(data.meta ?? null);
+      setCacheState(data.meta?.cache ?? null);
+      setError(null);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    fetchRepos();
+  useEffect(() => {
+    void fetchRepos();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sort, filter, limit, page]);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      await fetch("/api/github/sync", { method: "POST" });
+      await fetchRepos();
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const totalOpenPrs = repos.reduce((sum, r) => sum + r.open_pr_count, 0);
   const failingRepos = repos.filter((r) => r.failing_checks_count > 0 || r.ci_status === "failure").length;
@@ -123,10 +135,24 @@ export function RepoList() {
           className="w-32"
         />
 
-        {/* Cache indicator */}
-        <span className="ml-auto text-xs text-slate-400">
-          {cacheState === "hit" ? "⚡ cached" : cacheState === "stale" ? "⟳ refreshing" : ""}
-        </span>
+        {/* Cache indicator + Sync button */}
+        <div className="ml-auto flex items-center gap-2">
+          <span className="text-xs text-slate-400">
+            {cacheState === "hit" ? "⚡ cached" : cacheState === "stale" ? "⟳ refreshing" : ""}
+          </span>
+          <button
+            onClick={() => void handleSync()}
+            disabled={syncing || loading}
+            className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-slate-300 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 transition-colors"
+            title="Cache leeren und Repos neu laden"
+          >
+            <svg viewBox="0 0 16 16" className={`w-3 h-3 fill-current ${syncing ? 'animate-spin' : ''}`}>
+              <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+              <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+            </svg>
+            {syncing ? "Sync..." : "Sync"}
+          </button>
+        </div>
       </div>
 
       {/* Summary cards */}
