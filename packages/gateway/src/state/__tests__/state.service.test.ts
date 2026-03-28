@@ -7,6 +7,11 @@ vi.mock("../../db/pool.js", () => ({
   hasDatabase: () => true,
 }));
 
+// Mock event service to avoid DB calls from emit
+vi.mock("../../events/event.service.js", () => ({
+  eventService: { emit: vi.fn().mockResolvedValue({}) },
+}));
+
 import {
   listNamespace,
   getState,
