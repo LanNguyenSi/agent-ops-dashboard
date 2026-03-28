@@ -5,7 +5,15 @@ export default function Home() {
   return (
     <main className="dashboard-shell">
       <header className="dashboard-topbar surface-card">
-        <h1 className="topbar-title">Agent Ops</h1>
+        <div className="flex items-center gap-6">
+          <h1 className="topbar-title">Agent Ops</h1>
+          <nav className="flex items-center gap-4 text-sm">
+            <span className="font-medium text-gray-900">Dashboard</span>
+            <a href="/activity" className="text-gray-500 hover:text-gray-900 transition-colors">
+              Activity
+            </a>
+          </nav>
+        </div>
         <AgentBar />
       </header>
 
