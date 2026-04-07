@@ -1,0 +1,6 @@
+name: agent-ops-dashboard
+health: /api/health
+compose_file: docker-compose.prod.yml
+pre_update:
+  - docker compose -f docker-compose.prod.yml build --no-cache
+rollback: true
