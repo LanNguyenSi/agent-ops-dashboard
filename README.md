@@ -77,6 +77,88 @@ The gateway is publicly accessible at `https://ops.opentriologue.ai`.
 | `/api/events/stream` | GET | SSE live stream with `Last-Event-ID` replay |
 | `/api/events/stats` | GET | Subscriber count |
 
+### Dashboard API (Next.js)
+
+The dashboard exposes its own API at `https://ops.opentriologue.ai/api/`.
+
+#### `GET /api/github/repos`
+
+Returns repository health data including CI status, open PRs, and Dependabot vulnerability counts.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `owner` | string | `LanNguyenSi` | GitHub user/org to scan |
+| `limit` | int \| `"all"` | `10` | Results per page (1–100) or `"all"` to disable pagination |
+| `page` | int | `1` | Page number (≥ 1) |
+| `sort` | string | `"updated"` | Sort by: `updated`, `stars`, `name`, `ci_status` |
+| `order` | string | `"desc"` | Sort order: `asc`, `desc` |
+| `filter` | string | `"all"` | Filter: `all`, `failing`, `open_prs`, `vulnerable` |
+| `language` | string | — | Filter by language (e.g. `TypeScript`, `Python`) |
+
+**Response schema:**
+
+```jsonc
+{
+  "repos": [
+    {
+      "owner": "LanNguyenSi",
+      "repo": "agent-ops-dashboard",       // repo name (not "name")
+      "default_branch": "main",
+      "html_url": "https://github.com/...",
+      "ci_status": "success",               // success | failure | pending | unknown
+      "open_pr_count": 2,
+      "failing_checks_count": 0,
+      "last_workflow_run": { ... } | null,
+      "updated_at": "2026-04-07T...",
+      "description": "...",
+      "stars": 3,
+      "language": "TypeScript",
+      "pushed_at": "2026-04-07T...",
+      "vulnerabilities": {                  // null if Dependabot not enabled
+        "total": 3,
+        "critical": 0,
+        "high": 2,
+        "medium": 1,
+        "low": 0
+      }
+    }
+  ],
+  "errors": ["..."],                        // omitted if empty
+  "meta": {
+    "owner": "LanNguyenSi",
+    "total": 74,                            // total repos for owner
+    "filtered": 33,                         // after applying filter
+    "returned": 10,                         // after pagination
+    "vulnerableCount": 33,                  // repos with any CVEs
+    "limit": 10,
+    "page": 1,
+    "totalPages": 4,
+    "hasPreviousPage": false,
+    "hasNextPage": true,
+    "rangeStart": 1,
+    "rangeEnd": 10,
+    "sort": "updated",
+    "order": "desc",
+    "filter": "all",
+    "cache": "hit",                         // hit | miss | stale (5 min TTL)
+    "fetchedAt": "2026-04-07T05:24:54.355Z"
+  }
+}
+```
+
+**Example — list all repos with high+ CVEs:**
+
+```bash
+# All vulnerable repos (no pagination)
+curl "https://ops.opentriologue.ai/api/github/repos?filter=vulnerable&limit=all"
+
+# Vulnerable TypeScript repos, sorted by name
+curl "https://ops.opentriologue.ai/api/github/repos?filter=vulnerable&language=TypeScript&sort=name&order=asc&limit=all"
+
+# Failing CI, page 2
+curl "https://ops.opentriologue.ai/api/github/repos?filter=failing&page=2"
+```
+
 **Example — register and send heartbeats:**
 
 ```bash
