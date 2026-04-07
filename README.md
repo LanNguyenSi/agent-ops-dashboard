@@ -87,7 +87,7 @@ Returns repository health data including CI status, open PRs, and Dependabot vul
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `owner` | string | `LanNguyenSi` | GitHub user/org to scan |
+| `owner` | string | `GITHUB_OWNER` env or `LanNguyenSi` | GitHub user/org to scan |
 | `limit` | int \| `"all"` | `10` | Results per page (1–100) or `"all"` to disable pagination |
 | `page` | int | `1` | Page number (≥ 1) |
 | `sort` | string | `"updated"` | Sort by: `updated`, `stars`, `name`, `ci_status` |
@@ -110,11 +110,11 @@ Returns repository health data including CI status, open PRs, and Dependabot vul
       "failing_checks_count": 0,
       "last_workflow_run": { ... } | null,
       "updated_at": "2026-04-07T...",
-      "description": "...",
-      "stars": 3,
-      "language": "TypeScript",
-      "pushed_at": "2026-04-07T...",
-      "vulnerabilities": {                  // null if Dependabot not enabled
+      "description": "..." | null,          // optional
+      "stars": 3,                            // optional
+      "language": "TypeScript" | null,       // optional
+      "pushed_at": "2026-04-07T..." | null,  // optional
+      "vulnerabilities": {                  // omitted if Dependabot not enabled
         "total": 3,
         "critical": 0,
         "high": 2,
@@ -140,13 +140,14 @@ Returns repository health data including CI status, open PRs, and Dependabot vul
     "sort": "updated",
     "order": "desc",
     "filter": "all",
+    "language": "TypeScript",               // omitted if not filtered
     "cache": "hit",                         // hit | miss | stale (5 min TTL)
     "fetchedAt": "2026-04-07T05:24:54.355Z"
   }
 }
 ```
 
-**Example — list all repos with high+ CVEs:**
+**Example — list vulnerable repos:**
 
 ```bash
 # All vulnerable repos (no pagination)
