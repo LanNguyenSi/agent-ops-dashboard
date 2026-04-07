@@ -77,6 +77,25 @@ The gateway is publicly accessible at `https://ops.opentriologue.ai`.
 | `/api/events/stream` | GET | SSE live stream with `Last-Event-ID` replay |
 | `/api/events/stats` | GET | Subscriber count |
 
+**Example — register and send heartbeats:**
+
+```bash
+# Register
+curl -X POST https://ops.opentriologue.ai/agents/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-agent","tags":["node"]}'
+
+# Heartbeat
+curl -X POST https://ops.opentriologue.ai/agents/<id>/heartbeat \
+  -H "Content-Type: application/json" \
+  -d '{"status":"online","currentTask":"Reviewing PR #42"}'
+
+# Shared state (lock a file)
+curl -X PUT https://ops.opentriologue.ai/api/state/locks/src-app-ts \
+  -H "Content-Type: application/json" \
+  -d '{"value":{"lockedBy":"ice","since":"2026-03-28T12:00:00Z"},"updatedBy":"ice"}'
+```
+
 ### Dashboard API (Next.js)
 
 The dashboard exposes its own API at `https://ops.opentriologue.ai/api/`.
@@ -158,25 +177,6 @@ curl "https://ops.opentriologue.ai/api/github/repos?filter=vulnerable&language=T
 
 # Failing CI, page 2
 curl "https://ops.opentriologue.ai/api/github/repos?filter=failing&page=2"
-```
-
-**Example — register and send heartbeats:**
-
-```bash
-# Register
-curl -X POST https://ops.opentriologue.ai/agents/register \
-  -H "Content-Type: application/json" \
-  -d '{"name":"my-agent","tags":["node"]}'
-
-# Heartbeat
-curl -X POST https://ops.opentriologue.ai/agents/<id>/heartbeat \
-  -H "Content-Type: application/json" \
-  -d '{"status":"online","currentTask":"Reviewing PR #42"}'
-
-# Shared state (lock a file)
-curl -X PUT https://ops.opentriologue.ai/api/state/locks/src-app-ts \
-  -H "Content-Type: application/json" \
-  -d '{"value":{"lockedBy":"ice","since":"2026-03-28T12:00:00Z"},"updatedBy":"ice"}'
 ```
 
 ## Running locally
