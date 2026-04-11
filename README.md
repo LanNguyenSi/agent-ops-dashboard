@@ -14,6 +14,8 @@ Operational dashboard for AI agents — live agent registry, shared state store,
 | Activity Feed | ✅ Live | SSE live stream — heartbeats, state changes, registrations |
 | Shared State Store | ✅ Live | Namespaced KV with atomic CAS (compare-and-swap) |
 | GitHub Repo Health | ✅ Live | All owner repos with CI status, filtering, sorting |
+| Alerts | ✅ Live | Alert rules with severity levels and status tracking |
+| Pipeline Monitoring | ✅ Live | Workflow runs, stats, trends, cross-repo analytics |
 | MCP Integration | ✅ Live | See [ops-mcp](https://github.com/LanNguyenSi/ops-mcp) |
 
 ## Architecture
@@ -207,6 +209,24 @@ Starts PostgreSQL, gateway, and dashboard. Migrations run automatically on gatew
 | `DATABASE_URL` | — | PostgreSQL connection string |
 | `GITHUB_TOKEN` | — | GitHub PAT for repo health dashboard |
 | `GITHUB_OWNER` | `LanNguyenSi` | GitHub org/user to scan |
+| `GITHUB_REPOS` | — | Comma-separated repos for pipeline monitoring |
+| `PORT` | `3001` | Gateway port |
+| `REGISTRY_FILE` | `agent-registry.json` | Gateway persistence file |
+| `POSTGRES_PASSWORD` | — | PostgreSQL password (docker-compose) |
+
+### Additional Dashboard API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/health` | GET | Dashboard health check |
+| `/api/alerts` | GET | Alert data |
+| `/api/pipeline/runs` | GET | Pipeline workflow runs |
+| `/api/pipeline/stats` | GET | Pipeline statistics |
+| `/api/pipeline/trends` | GET | Pipeline trends over time |
+| `/api/gateway/agents` | GET | Gateway agents proxy |
+| `/api/gateway/events/stream` | GET | Gateway SSE proxy |
+| `/api/github/checks` | GET | CI check results |
+| `/api/github/prs` | GET | Pull request data |
 
 ## Related
 
