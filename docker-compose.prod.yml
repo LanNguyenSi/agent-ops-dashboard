@@ -11,6 +11,12 @@ services:
       - REGISTRY_FILE=/data/agent-registry.json
     volumes:
       - gateway_data:/data
+    # Bind the gateway port to loopback only so host-side agents
+    # (heartbeat checks, local debugging) can reach it without
+    # exposing 3001 to the public internet — Traefik still fronts
+    # the service for external traffic via the labels below.
+    ports:
+      - "127.0.0.1:3001:3001"
     networks:
       - traefik
     labels:
@@ -30,6 +36,13 @@ services:
       dockerfile: Dockerfile
     container_name: agent-ops-dashboard
     restart: unless-stopped
+    # Pull deployment-specific secrets (GITHUB_TOKEN, etc.) from a
+    # local .env alongside the compose file. Optional — compose
+    # warns but does not fail when the file is absent, which keeps
+    # CI / fresh-clone runs working.
+    env_file:
+      - path: .env
+        required: false
     environment:
       - NODE_ENV=production
       - HOSTNAME=0.0.0.0
