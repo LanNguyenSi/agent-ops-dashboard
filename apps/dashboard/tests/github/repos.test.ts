@@ -152,6 +152,7 @@ describe("getRepoHealth", () => {
       {
         owner: "test",
         repo: "alpha",
+        full_name: "test/alpha",
         default_branch: "main",
         html_url: "https://github.com/test/alpha",
         ci_status: "success",
@@ -172,6 +173,7 @@ describe("getRepoHealth", () => {
       {
         owner: "test",
         repo: "beta",
+        full_name: "test/beta",
         default_branch: "main",
         html_url: "https://github.com/test/beta",
         ci_status: "failure",
@@ -192,6 +194,7 @@ describe("getRepoHealth", () => {
       {
         owner: "test",
         repo: "gamma",
+        full_name: "test/gamma",
         default_branch: "main",
         html_url: "https://github.com/test/gamma",
         ci_status: "pending",
@@ -224,7 +227,106 @@ describe("getRepoHealth", () => {
     expect(filtered[0]?.repo).toBe("beta");
   });
 
+  it("drops cross-owner repos returned by listForAuthenticatedUser", async () => {
+    // Regression for the 2026-04-12 CVE-leak: when the token had
+    // access to repos under a second owner, `listForAuthenticatedUser`
+    // returned them unfiltered. Downstream filters matched on short
+    // `repo` name, collapsing LanNguyenSi/lava-memories (clean) and
+    // lavaclawdbot/lava-memories (vulnerable) into one entry. The
+    // filter in listAllReposForUser must now scope by owner login.
+    mockOctokit.repos.listForAuthenticatedUser.mockReset();
+    mockOctokit.repos.listForAuthenticatedUser
+      .mockResolvedValueOnce({
+        data: [
+          { owner: { login: "LanNguyenSi" }, name: "lava-memories" },
+          { owner: { login: "lavaclawdbot" }, name: "lava-memories" },
+          { owner: { login: "LanNguyenSi" }, name: "project-os" },
+          { owner: { login: "lavaclawdbot" }, name: "ops-bot-private" },
+        ],
+      })
+      .mockResolvedValueOnce({ data: [] });
+
+    mockOctokit.repos.get.mockImplementation(({ owner, repo }: { owner: string; repo: string }) =>
+      Promise.resolve({
+        data: {
+          default_branch: "main",
+          html_url: `https://github.com/${owner}/${repo}`,
+          updated_at: "2024-01-01T00:00:00Z",
+          description: null,
+          stargazers_count: 0,
+          language: null,
+          pushed_at: "2024-01-01T00:00:00Z",
+        },
+      })
+    );
+    mockOctokit.pulls.list.mockResolvedValue({ data: [] });
+    mockOctokit.actions.listWorkflowRunsForRepo.mockResolvedValue({ data: { workflow_runs: [] } });
+    mockOctokit.checks.listForRef.mockResolvedValue({ data: { check_runs: [] } });
+    mockOctokit.request.mockResolvedValue({ data: [] });
+
+    const snapshot = await getAllRepos("LanNguyenSi");
+
+    expect(snapshot.repos).toHaveLength(2);
+    const fullNames = snapshot.repos.map((r) => r.full_name).sort();
+    expect(fullNames).toEqual(["LanNguyenSi/lava-memories", "LanNguyenSi/project-os"]);
+    // The lavaclawdbot owner must not appear at all.
+    expect(
+      snapshot.repos.some((r) => r.owner === "lavaclawdbot"),
+    ).toBe(false);
+  });
+
+  it("owner comparison is case-insensitive", async () => {
+    mockOctokit.repos.listForAuthenticatedUser.mockReset();
+    mockOctokit.repos.listForAuthenticatedUser
+      .mockResolvedValueOnce({
+        data: [
+          { owner: { login: "LanNguyenSi" }, name: "alpha" },
+          { owner: { login: "lannguyensi" }, name: "beta" },
+        ],
+      })
+      .mockResolvedValueOnce({ data: [] });
+
+    mockOctokit.repos.get.mockImplementation(({ owner, repo }: { owner: string; repo: string }) =>
+      Promise.resolve({
+        data: {
+          default_branch: "main",
+          html_url: `https://github.com/${owner}/${repo}`,
+          updated_at: "2024-01-01T00:00:00Z",
+        },
+      })
+    );
+    mockOctokit.pulls.list.mockResolvedValue({ data: [] });
+    mockOctokit.actions.listWorkflowRunsForRepo.mockResolvedValue({ data: { workflow_runs: [] } });
+    mockOctokit.checks.listForRef.mockResolvedValue({ data: { check_runs: [] } });
+    mockOctokit.request.mockResolvedValue({ data: [] });
+
+    const snapshot = await getAllRepos("LANNGUYENSI");
+    expect(snapshot.repos).toHaveLength(2);
+  });
+
+  it("populates full_name server-side as `${owner}/${repo}`", async () => {
+    mockOctokit.repos.get.mockResolvedValue({
+      data: {
+        default_branch: "main",
+        html_url: "https://github.com/acme/widgets",
+        updated_at: "2024-01-01T00:00:00Z",
+      },
+    });
+    mockOctokit.pulls.list.mockResolvedValue({ data: [] });
+    mockOctokit.actions.listWorkflowRunsForRepo.mockResolvedValue({ data: { workflow_runs: [] } });
+    mockOctokit.checks.listForRef.mockResolvedValue({ data: { check_runs: [] } });
+    mockOctokit.request.mockResolvedValue({ data: [] });
+
+    const health = await getRepoHealth("acme", "widgets");
+    expect(health.full_name).toBe("acme/widgets");
+  });
+
   it("fetches all user repos with pagination and caches the snapshot", async () => {
+    // Force the fallback path: drain any queued responses on the
+    // primary endpoint so listAllReposForUser fails over to listForUser.
+    mockOctokit.repos.listForAuthenticatedUser.mockReset();
+    mockOctokit.repos.listForAuthenticatedUser.mockRejectedValue(new Error("no auth user path"));
+    mockOctokit.repos.listForUser.mockReset();
     mockOctokit.repos.listForUser
       .mockResolvedValueOnce({
         data: [

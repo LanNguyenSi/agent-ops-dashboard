@@ -45,6 +45,10 @@ export interface PullRequest {
 export interface RepoHealth {
   owner: string;
   repo: string;
+  /** Stable `owner/repo` identifier. Populated server-side so downstream
+   *  callers can safely disambiguate repos with the same short name
+   *  under different owners (e.g. a fork + upstream sharing a slug). */
+  full_name: string;
   default_branch: string;
   html_url: string;
   ci_status: "success" | "failure" | "pending" | "unknown";
