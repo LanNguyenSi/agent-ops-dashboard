@@ -230,6 +230,7 @@ Starts PostgreSQL, gateway, and dashboard. Migrations run automatically on gatew
 
 ## Related
 
+- **[depsight](https://github.com/LanNguyenSi/depsight)** — deep CVE, license, and dependency-health scanning for a single repo or team; complements this dashboard's multi-repo operational view.
 - **[repo-dashboard](https://github.com/LanNguyenSi/repo-dashboard)** — lightweight CLI alternative: `repo-dash LanNguyenSi` for a quick terminal overview of repos, PRs and CI status
 
 ## Built with
