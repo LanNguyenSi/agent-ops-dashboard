@@ -8,6 +8,9 @@ services:
     environment:
       - PORT=3001
       - NODE_ENV=production
+      - REGISTRY_FILE=/data/agent-registry.json
+    volumes:
+      - gateway_data:/data
     networks:
       - traefik
     labels:
@@ -45,6 +48,9 @@ services:
       - "traefik.http.routers.agent-ops.tls=true"
       - "traefik.http.routers.agent-ops.tls.certresolver=letsencrypt"
       - "traefik.http.services.agent-ops.loadbalancer.server.port=3000"
+
+volumes:
+  gateway_data:
 
 networks:
   traefik:
