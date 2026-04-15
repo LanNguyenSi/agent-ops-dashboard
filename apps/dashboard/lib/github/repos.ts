@@ -94,6 +94,7 @@ export async function getRepoHealth(owner: string, repo: string): Promise<RepoHe
     return {
       owner,
       repo,
+      full_name: `${owner}/${repo}`,
       default_branch: repository.default_branch,
       html_url: repository.html_url,
       ci_status,
@@ -267,10 +268,19 @@ export function resolveRepoOwner(explicitOwner?: string): string {
 async function listAllReposForUser(owner: string): Promise<Array<{ owner: string; repo: string }>> {
   const octokit = getOctokit();
   const repos: Array<{ owner: string; repo: string }> = [];
+  // Compare owner logins case-insensitively — GitHub treats them that
+  // way and a stored env var may differ in casing from the token user.
+  const wantsOwner = owner.toLowerCase();
   let page = 1;
 
-  // Try authenticated endpoint first (includes private repos)
-  // Falls back to public-only listForUser if token doesn't match owner
+  // Try authenticated endpoint first (includes private repos). The
+  // authenticated endpoint returns every repo the token can see —
+  // including repos owned by OTHER users the token happens to have
+  // access to — so we MUST filter by `owner.login` here. Skipping
+  // that filter is what caused the cross-owner CVE leak where a
+  // `repo=lava-memories` match collapsed LanNguyenSi/lava-memories
+  // (clean) and lavaclawdbot/lava-memories (vulnerable) into one
+  // entry in the response.
   try {
     while (true) {
       const { data } = await octokit.repos.listForAuthenticatedUser({
@@ -281,7 +291,9 @@ async function listAllReposForUser(owner: string): Promise<Array<{ owner: string
       });
 
       repos.push(
-        ...data.map((r) => ({ owner: r.owner.login, repo: r.name }))
+        ...data
+          .filter((r) => r.owner.login.toLowerCase() === wantsOwner)
+          .map((r) => ({ owner: r.owner.login, repo: r.name }))
       );
 
       if (data.length < 100) break;
@@ -293,7 +305,9 @@ async function listAllReposForUser(owner: string): Promise<Array<{ owner: string
     // Token doesn't support authenticated user listing — fall through
   }
 
-  // Fallback: public repos only
+  // Fallback: public repos only. `listForUser` already scopes to the
+  // requested username server-side, but we defensively re-check owner
+  // here so a future octokit/api quirk can't re-open the leak.
   page = 1;
   while (true) {
     const { data } = await octokit.repos.listForUser({
@@ -306,7 +320,9 @@ async function listAllReposForUser(owner: string): Promise<Array<{ owner: string
     });
 
     repos.push(
-      ...data.map((r) => ({ owner: r.owner.login, repo: r.name }))
+      ...data
+        .filter((r) => r.owner.login.toLowerCase() === wantsOwner)
+        .map((r) => ({ owner: r.owner.login, repo: r.name }))
     );
 
     if (data.length < 100) break;
