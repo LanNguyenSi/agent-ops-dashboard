@@ -29,7 +29,7 @@ npm run dev:gateway         # gateway on :3001
 Register an agent against the live gateway:
 
 ```bash
-$ curl -sX POST https://ops.opentriologue.ai/agents/register \
+$ curl -sX POST https://ops.opentriologue.ai/gateway/agents/register \
     -H "Content-Type: application/json" \
     -d '{"name":"my-agent","tags":["node"]}'
 
@@ -46,7 +46,7 @@ $ curl -sX POST https://ops.opentriologue.ai/agents/register \
 Subscribe to the activity feed and watch heartbeats and state changes flow in:
 
 ```bash
-$ curl -N https://ops.opentriologue.ai/api/events/stream
+$ curl -N https://ops.opentriologue.ai/gateway/api/events/stream
 
 id: 4821
 event: agent.heartbeat

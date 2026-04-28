@@ -2,10 +2,10 @@
 
 agent-ops-dashboard exposes two HTTP surfaces:
 
-1. The **gateway** (Fastify, port 3001): authoritative agent registry, shared state store, and activity feed. Publicly reachable at `https://ops.opentriologue.ai`.
+1. The **gateway** (Fastify, port 3001): authoritative agent registry, shared state store, and activity feed. Publicly reachable at `https://ops.opentriologue.ai/gateway/` (Traefik routes the `/gateway/` path prefix to the gateway container).
 2. The **dashboard** (Next.js, port 3000): GitHub repo health, pipeline analytics, alerts, plus thin proxies onto the gateway for browser clients. Publicly reachable at `https://ops.opentriologue.ai/api/`.
 
-All examples below use the hosted gateway; for self-hosted deployments substitute `http://localhost:3001` and `http://localhost:3000`.
+All examples below use the hosted gateway under the `/gateway/` prefix; for self-hosted deployments substitute `http://localhost:3001` (gateway, no prefix) and `http://localhost:3000` (dashboard).
 
 ## Gateway: Agents
 
@@ -22,7 +22,7 @@ All examples below use the hosted gateway; for self-hosted deployments substitut
 **Register:**
 
 ```bash
-curl -X POST https://ops.opentriologue.ai/agents/register \
+curl -X POST https://ops.opentriologue.ai/gateway/agents/register \
   -H "Content-Type: application/json" \
   -d '{"name":"my-agent","tags":["node"],"meta":{"region":"eu"}}'
 ```
@@ -44,7 +44,7 @@ Response (`201`):
 **Heartbeat:**
 
 ```bash
-curl -X POST https://ops.opentriologue.ai/agents/<id>/heartbeat \
+curl -X POST https://ops.opentriologue.ai/gateway/agents/<id>/heartbeat \
   -H "Content-Type: application/json" \
   -d '{"status":"busy","currentTask":"Reviewing PR #42"}'
 ```
@@ -66,7 +66,7 @@ Namespaced key-value store with atomic compare-and-swap, backed by PostgreSQL. V
 **Set a value:**
 
 ```bash
-curl -X PUT https://ops.opentriologue.ai/api/state/locks/src-app-ts \
+curl -X PUT https://ops.opentriologue.ai/gateway/api/state/locks/src-app-ts \
   -H "Content-Type: application/json" \
   -d '{"value":{"lockedBy":"ice","since":"2026-04-28T12:00:00Z"},"updatedBy":"ice"}'
 ```
@@ -89,7 +89,7 @@ Response:
 **Compare-and-swap:**
 
 ```bash
-curl -X POST https://ops.opentriologue.ai/api/state/locks/src-app-ts/cas \
+curl -X POST https://ops.opentriologue.ai/gateway/api/state/locks/src-app-ts/cas \
   -H "Content-Type: application/json" \
   -d '{"expectedVersion":1,"value":{"lockedBy":"lava"},"updatedBy":"lava"}'
 ```
@@ -107,15 +107,17 @@ On version mismatch the gateway returns `409` with `{ error: "CAS_CONFLICT", exp
 Recorded event types (see `packages/gateway/src/events/event.service.ts`):
 
 ```
-agent.registered    agent.heartbeat    agent.disconnected
+agent.registered    agent.heartbeat
 state.set           state.deleted
 state.cas.success   state.cas.conflict
 ```
 
+`agent.disconnected` is reserved as a constant but is not currently emitted to the durable event log; offline transitions surface only on the registry SSE stream as `agent:offline`.
+
 **Stream events:**
 
 ```bash
-curl -N https://ops.opentriologue.ai/api/events/stream
+curl -N https://ops.opentriologue.ai/gateway/api/events/stream
 
 id: 4821
 event: agent.heartbeat

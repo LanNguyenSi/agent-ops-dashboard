@@ -41,8 +41,8 @@ The gateway requires PostgreSQL when state-store and persistent activity-feed fe
 
 Schema highlights:
 
-- `state_entries` (namespace, key, value JSONB, version, updated_by, updated_at, created_at) with unique `(namespace, key)`.
-- `agent_events` (id BIGSERIAL, agent_id, event_type, payload JSONB, created_at). Indexed on `(agent_id, id)` and `(event_type, id)` for fast filtered tail reads.
+- `agent_state` (namespace, key, value JSONB, version, updated_by, updated_at, created_at) with unique `(namespace, key)`, plus single-column indexes on `namespace` and `updated_at DESC`.
+- `agent_events` (id BIGSERIAL, agent_id, event_type, payload JSONB, created_at). Single-column indexes on `agent_id`, `event_type`, and `created_at DESC` support filtered tail reads; the BIGSERIAL primary key already orders rows for `Last-Event-ID` replays.
 
 ## SSE design
 
