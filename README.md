@@ -1,22 +1,85 @@
 # Agent Ops Dashboard
 
-Operational dashboard for AI agents — live agent registry, shared state store, activity feed, and GitHub repo health.
+Operational dashboard for AI agents: live agent registry, shared state store, activity feed, and GitHub repo health.
 
-## Live
+agent-ops-dashboard is a Next.js + Fastify monorepo that gives AI agents (Claude Code, Codex, custom runners) a place to register, heartbeat, share namespaced state with atomic compare-and-swap, and stream a live activity feed over SSE. The same dashboard also surfaces GitHub repo health (CI status, open PRs, Dependabot vulnerabilities) for every repo under an owner, so a fleet of agents and the humans watching them share one operational view.
 
-👉 **https://ops.opentriologue.ai**
+## Try it in 60 seconds
+
+The hosted dashboard is live at **[ops.opentriologue.ai](https://ops.opentriologue.ai)**: register an agent, push a heartbeat, or stream the activity feed without installing anything.
+
+To self-host:
+
+```bash
+git clone https://github.com/LanNguyenSi/agent-ops-dashboard.git
+cd agent-ops-dashboard
+docker compose up -d        # PostgreSQL + gateway (3001) + dashboard (3000)
+```
+
+Or run the dev loop without Docker:
+
+```bash
+npm install
+make dev                    # dashboard on :3000
+npm run dev:gateway         # gateway on :3001
+```
+
+## What it looks like
+
+Register an agent against the live gateway:
+
+```bash
+$ curl -sX POST https://ops.opentriologue.ai/agents/register \
+    -H "Content-Type: application/json" \
+    -d '{"name":"my-agent","tags":["node"]}'
+
+{
+  "id": "8a7c1f1e-2c4b-4a1f-9c5d-1e2b3c4d5e6f",
+  "name": "my-agent",
+  "status": "online",
+  "lastSeen": "2026-04-28T12:00:00.000Z",
+  "registeredAt": "2026-04-28T12:00:00.000Z",
+  "tags": ["node"]
+}
+```
+
+Subscribe to the activity feed and watch heartbeats and state changes flow in:
+
+```bash
+$ curl -N https://ops.opentriologue.ai/api/events/stream
+
+id: 4821
+event: agent.heartbeat
+data: {"id":4821,"agentId":"8a7c1f1e-...","eventType":"agent.heartbeat","payload":{"status":"online"},"createdAt":"2026-04-28T12:00:30.000Z"}
+```
+
+Reconnects send `Last-Event-ID` and replay missed events from the `agent_events` log; nothing in flight is lost.
+
+## Next steps
+
+| If you want to... | Read |
+|---|---|
+| Call the gateway and dashboard APIs (registry, state CAS, events, repo health) | [docs/api.md](docs/api.md) |
+| Understand the components, SSE design, and GitHub integration | [docs/architecture.md](docs/architecture.md) |
+| Configure env vars, GitHub tokens, and deployment | [docs/configuration.md](docs/configuration.md) |
+
+## Companion projects
+
+- **[ops-mcp](https://github.com/LanNguyenSi/ops-mcp)**: MCP server that lets AI agents talk to the gateway directly via 9 tools (`ops_register`, `ops_heartbeat`, `ops_state_cas`, ...). Drop it into Claude Code and your agent shows up in the dashboard automatically.
+- **API docs**: full REST surface in [docs/](docs/) for hand-rolled clients.
+- **Hosted demo**: [ops.opentriologue.ai](https://ops.opentriologue.ai) runs the latest `master`; useful as a sandbox before standing up your own.
 
 ## Features
 
 | Feature | Status | Notes |
-|---------|--------|-------|
-| Agent Registry | ✅ Live | Register, heartbeat, auto-offline after 60s |
-| Activity Feed | ✅ Live | SSE live stream — heartbeats, state changes, registrations |
-| Shared State Store | ✅ Live | Namespaced KV with atomic CAS (compare-and-swap) |
-| GitHub Repo Health | ✅ Live | All owner repos with CI status, filtering, sorting |
-| Alerts | ✅ Live | Alert rules with severity levels and status tracking |
-| Pipeline Monitoring | ✅ Live | Workflow runs, stats, trends, cross-repo analytics |
-| MCP Integration | ✅ Live | See [ops-mcp](https://github.com/LanNguyenSi/ops-mcp) |
+|---|---|---|
+| Agent Registry | Live | Register, heartbeat, auto-offline after 60s |
+| Activity Feed | Live | SSE stream with `Last-Event-ID` replay |
+| Shared State Store | Live | Namespaced KV with atomic CAS |
+| GitHub Repo Health | Live | All owner repos, CI status, filtering, sorting |
+| Alerts | Live | Alert rules with severity levels and status |
+| Pipeline Monitoring | Live | Workflow runs, stats, trends, cross-repo analytics |
+| MCP Integration | Live | See [ops-mcp](https://github.com/LanNguyenSi/ops-mcp) |
 
 ## Architecture
 
@@ -28,215 +91,17 @@ agent-ops-dashboard/          # npm workspaces monorepo
     └── gateway/              # Fastify REST API + SSE + State Store (port 3001)
 ```
 
-## MCP Integration
-
-AI agents (Claude Code, Codex, etc.) can connect to the gateway directly via MCP:
-
-```json
-{
-  "mcpServers": {
-    "ops": {
-      "command": "npx",
-      "args": ["@opentriologue/mcp", "--gateway", "https://ops.opentriologue.ai"]
-    }
-  }
-}
-```
-
-👉 **See [ops-mcp](https://github.com/LanNguyenSi/ops-mcp)** for the full MCP server package with 9 tools:
-`ops_register`, `ops_heartbeat`, `ops_whoami`, `ops_list_agents`, `ops_state_get`, `ops_state_set`, `ops_state_cas`, `ops_state_list`, `ops_state_delete`
-
-## Gateway API
-
-The gateway is publicly accessible at `https://ops.opentriologue.ai`.
-
-### Agents
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | Gateway health + agent count |
-| `/agents` | GET | List all agents with status |
-| `/agents/:id` | GET | Single agent details |
-| `/agents/register` | POST | Register a new agent |
-| `/agents/:id/heartbeat` | POST | Send heartbeat |
-| `/agents/:id/unregister` | DELETE | Go offline |
-
-### State Store
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/state/:ns` | GET | List all keys in namespace |
-| `/api/state/:ns/:key` | GET | Get a value |
-| `/api/state/:ns/:key` | PUT | Set a value (upsert) |
-| `/api/state/:ns/:key` | DELETE | Delete a value |
-| `/api/state/:ns/:key/cas` | POST | Atomic compare-and-swap |
-
-### Activity Feed
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/events` | GET | Query events (filter by agentId, eventType, cursor) |
-| `/api/events/stream` | GET | SSE live stream with `Last-Event-ID` replay |
-| `/api/events/stats` | GET | Subscriber count |
-
-**Example — register and send heartbeats:**
-
-```bash
-# Register
-curl -X POST https://ops.opentriologue.ai/agents/register \
-  -H "Content-Type: application/json" \
-  -d '{"name":"my-agent","tags":["node"]}'
-
-# Heartbeat
-curl -X POST https://ops.opentriologue.ai/agents/<id>/heartbeat \
-  -H "Content-Type: application/json" \
-  -d '{"status":"online","currentTask":"Reviewing PR #42"}'
-
-# Shared state (lock a file)
-curl -X PUT https://ops.opentriologue.ai/api/state/locks/src-app-ts \
-  -H "Content-Type: application/json" \
-  -d '{"value":{"lockedBy":"ice","since":"2026-03-28T12:00:00Z"},"updatedBy":"ice"}'
-```
-
-### Dashboard API (Next.js)
-
-The dashboard exposes its own API at `https://ops.opentriologue.ai/api/`.
-
-#### `GET /api/github/repos`
-
-Returns repository health data including CI status, open PRs, and Dependabot vulnerability counts.
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `owner` | string | `GITHUB_OWNER` env or `LanNguyenSi` | GitHub user/org to scan |
-| `limit` | int \| `"all"` | `10` | Results per page (1–100) or `"all"` to disable pagination |
-| `page` | int | `1` | Page number (≥ 1) |
-| `sort` | string | `"updated"` | Sort by: `updated`, `stars`, `name`, `ci_status` |
-| `order` | string | `"desc"` | Sort order: `asc`, `desc` |
-| `filter` | string | `"all"` | Filter: `all`, `failing`, `open_prs`, `vulnerable` |
-| `language` | string | — | Filter by language (e.g. `TypeScript`, `Python`) |
-
-**Response schema:**
-
-```jsonc
-{
-  "repos": [
-    {
-      "owner": "LanNguyenSi",
-      "repo": "agent-ops-dashboard",       // repo name (not "name")
-      "default_branch": "main",
-      "html_url": "https://github.com/...",
-      "ci_status": "success",               // success | failure | pending | unknown
-      "open_pr_count": 2,
-      "failing_checks_count": 0,
-      "last_workflow_run": { ... } | null,
-      "updated_at": "2026-04-07T...",
-      "description": "..." | null,          // optional
-      "stars": 3,                            // optional
-      "language": "TypeScript" | null,       // optional
-      "pushed_at": "2026-04-07T..." | null,  // optional
-      "vulnerabilities": {                  // omitted if Dependabot not enabled
-        "total": 3,
-        "critical": 0,
-        "high": 2,
-        "medium": 1,
-        "low": 0
-      }
-    }
-  ],
-  "errors": ["..."],                        // omitted if empty
-  "meta": {
-    "owner": "LanNguyenSi",
-    "total": 74,                            // total repos for owner
-    "filtered": 33,                         // after applying filter
-    "returned": 10,                         // after pagination
-    "vulnerableCount": 33,                  // repos with any CVEs
-    "limit": 10,
-    "page": 1,
-    "totalPages": 4,
-    "hasPreviousPage": false,
-    "hasNextPage": true,
-    "rangeStart": 1,
-    "rangeEnd": 10,
-    "sort": "updated",
-    "order": "desc",
-    "filter": "all",
-    "language": "TypeScript",               // omitted if not filtered
-    "cache": "hit",                         // hit | miss | stale (5 min TTL)
-    "fetchedAt": "2026-04-07T05:24:54.355Z"
-  }
-}
-```
-
-**Example — list vulnerable repos:**
-
-```bash
-# All vulnerable repos (no pagination)
-curl "https://ops.opentriologue.ai/api/github/repos?filter=vulnerable&limit=all"
-
-# Vulnerable TypeScript repos, sorted by name
-curl "https://ops.opentriologue.ai/api/github/repos?filter=vulnerable&language=TypeScript&sort=name&order=asc&limit=all"
-
-# Failing CI, page 2
-curl "https://ops.opentriologue.ai/api/github/repos?filter=failing&page=2"
-```
-
-## Running locally
-
-```bash
-# Install all workspace deps
-npm install
-
-# Start gateway (requires PostgreSQL — see docker-compose.yml)
-npm run dev --workspace=packages/gateway
-
-# Start dashboard
-npm run dev --workspace=apps/dashboard
-```
-
-## Deploy with Docker
-
-```bash
-docker compose up -d
-```
-
-Starts PostgreSQL, gateway, and dashboard. Migrations run automatically on gateway startup.
-
-## Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DATABASE_URL` | — | PostgreSQL connection string |
-| `GITHUB_TOKEN` | — | GitHub PAT for repo health dashboard |
-| `GITHUB_OWNER` | `LanNguyenSi` | GitHub org/user to scan |
-| `GITHUB_REPOS` | — | Comma-separated repos for pipeline monitoring |
-| `PORT` | `3001` | Gateway port |
-| `REGISTRY_FILE` | `agent-registry.json` | Gateway persistence file |
-| `POSTGRES_PASSWORD` | — | PostgreSQL password (docker-compose) |
-
-### Additional Dashboard API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/health` | GET | Dashboard health check |
-| `/api/alerts` | GET | Alert data |
-| `/api/pipeline/runs` | GET | Pipeline workflow runs |
-| `/api/pipeline/stats` | GET | Pipeline statistics |
-| `/api/pipeline/trends` | GET | Pipeline trends over time |
-| `/api/gateway/agents` | GET | Gateway agents proxy |
-| `/api/gateway/events/stream` | GET | Gateway SSE proxy |
-| `/api/github/checks` | GET | CI check results |
-| `/api/github/prs` | GET | Pull request data |
+See [docs/architecture.md](docs/architecture.md) for the full breakdown.
 
 ## Related
 
-- **[depsight](https://github.com/LanNguyenSi/depsight)** — deep CVE, license, and dependency-health scanning for a single repo or team; complements this dashboard's multi-repo operational view.
-- **[repo-dashboard](https://github.com/LanNguyenSi/repo-dashboard)** — lightweight CLI alternative: `repo-dash LanNguyenSi` for a quick terminal overview of repos, PRs and CI status
+- **[depsight](https://github.com/LanNguyenSi/depsight)**: deep CVE, license, and dependency-health scanning for a single repo or team; complements this dashboard's multi-repo operational view.
+- **[repo-dashboard](https://github.com/LanNguyenSi/repo-dashboard)**: lightweight CLI alternative; `repo-dash LanNguyenSi` for a quick terminal overview of repos, PRs, and CI status.
 
 ## Built with
 
-Next.js · TypeScript · Tailwind CSS · Fastify · PostgreSQL · Recharts · Octokit
+Next.js, TypeScript, Tailwind CSS, Fastify, PostgreSQL, Recharts, Octokit.
 
 ---
 
-Built by [Ice 🧊](https://github.com/LanNguyenSi) + [Lava 🌋](https://github.com/lavaclawdbot) — two AI agents, one dashboard.
+Built by [Ice](https://github.com/LanNguyenSi) + [Lava](https://github.com/lavaclawdbot): two AI agents, one dashboard.
