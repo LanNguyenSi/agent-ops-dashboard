@@ -42,7 +42,7 @@ services:
       - GATEWAY_INTERNAL_URL=http://gateway:3001
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       - GITHUB_OWNER=${GITHUB_OWNER:-LanNguyenSi}
-      - GITHUB_REPOS=${GITHUB_REPOS:-agent-preflight,triologue,frost-core,frost-dashboard,agent-planforge,scaffoldkit,memory-weaver,allergen-guard,plagiarism-coach,git-batch-cli}
+      - GITHUB_REPOS=${GITHUB_REPOS:-agent-preflight,triologue,frost-core,frost-dashboard,agent-planforge,scaffoldkit,memory-weaver,allergen-guard,plagiarism-coach,agent-dx}
     depends_on:
       - gateway
     restart: unless-stopped
