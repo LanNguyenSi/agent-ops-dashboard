@@ -55,6 +55,10 @@ GATEWAY_URL=http://localhost:3001 npx @opentriologue/mcp
 - `ops_state_list`: list all keys in a namespace
 - `ops_state_delete`: delete a key from the state store
 
+## Publishing
+
+A new release is published to npm via GitHub Actions: trigger the [`Publish @opentriologue/mcp`](../../.github/workflows/publish-mcp.yml) workflow manually (Actions tab, Run workflow). It builds, tests, and runs `npm publish --workspace=@opentriologue/mcp`. Requires the `NPM_TOKEN` repository secret.
+
 ## Architecture
 
 ```
