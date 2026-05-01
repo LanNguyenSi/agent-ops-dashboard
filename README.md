@@ -63,7 +63,7 @@ Reconnects send `Last-Event-ID` and replay missed events from the `agent_events`
 | Understand the components, SSE design, and GitHub integration | [docs/architecture.md](docs/architecture.md) |
 | Configure env vars, GitHub tokens, and deployment | [docs/configuration.md](docs/configuration.md) |
 
-## Companion projects
+## Other ways in
 
 - **MCP server** ([packages/mcp/](packages/mcp/README.md), published as `@opentriologue/mcp`): lets AI agents talk to the gateway directly via 9 tools (`ops_register`, `ops_heartbeat`, `ops_state_cas`, ...). Drop it into Claude Code and your agent shows up in the dashboard automatically.
 - **API docs**: full REST surface in [docs/](docs/) for hand-rolled clients.
