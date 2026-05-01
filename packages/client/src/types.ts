@@ -43,3 +43,36 @@ export interface ClientConfig {
   agentId?: string;
   agentName?: string;
 }
+
+// State-store types (mirror packages/gateway/src/state/state.schema.ts)
+
+export interface StateEntry {
+  id: string;
+  namespace: string;
+  key: string;
+  value: Record<string, unknown>;
+  version: number;
+  updatedBy: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+
+export interface StateKeyInfo {
+  key: string;
+  version: number;
+  updatedBy: string | null;
+  updatedAt: string;
+}
+
+export interface StateListResult {
+  namespace: string;
+  count: number;
+  keys: StateKeyInfo[];
+}
+
+export interface CasConflictError {
+  error: "CAS_CONFLICT";
+  expectedVersion: number;
+  actualVersion: number;
+  message: string;
+}
