@@ -1,58 +1,28 @@
-// Agent types (mirrors gateway models)
-export interface Agent {
-  id: string;
-  name: string;
-  status: "online" | "offline" | string;
-  lastSeen: string | null;
-  registeredAt: string;
-  tags?: string[];
-  meta?: Record<string, unknown>;
-}
+// Domain types are sourced from @agent-ops/client so the mcp wrapper, the
+// CLI/SDK client, and the gateway all share one shape. mcp keeps only the
+// MCP-protocol-specific helpers local.
 
-export interface RegisterAgentInput {
-  name: string;
-  tags?: string[];
-  meta?: Record<string, unknown>;
-}
+import type { Agent, RegisterPayload } from "@agent-ops/client";
 
-export interface RegisterAgentResult {
-  id: string;
-  name: string;
-  status: string;
-  registeredAt: string;
-}
+export type {
+  Agent,
+  AgentStatus,
+  RegisterPayload,
+  HeartbeatPayload,
+  StateEntry,
+  StateKeyInfo,
+  StateListResult,
+  CasConflictError,
+} from "@agent-ops/client";
 
-// State types
-export interface StateEntry {
-  id: string;
-  namespace: string;
-  key: string;
-  value: Record<string, unknown>;
-  version: number;
-  updatedBy: string | null;
-  updatedAt: string;
-  createdAt: string;
-}
+// Aliases preserved for compatibility with existing mcp tool signatures.
+export type RegisterAgentInput = RegisterPayload;
+export type RegisterAgentResult = Pick<
+  Agent,
+  "id" | "name" | "status" | "registeredAt"
+>;
 
-export interface StateListResult {
-  namespace: string;
-  count: number;
-  keys: Array<{
-    key: string;
-    version: number;
-    updatedBy: string | null;
-    updatedAt: string;
-  }>;
-}
-
-export interface CasConflictError {
-  error: "CAS_CONFLICT";
-  expectedVersion: number;
-  actualVersion: number;
-  message: string;
-}
-
-// Event types
+// Event types (mcp-internal, not part of the gateway/client surface yet).
 export interface AgentEvent {
   id: number;
   agentId: string | null;
