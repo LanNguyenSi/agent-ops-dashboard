@@ -19,7 +19,7 @@
     "README.md"
   ],
   "dependencies": {
-    "@agent-ops/client": "*",
+    "@agent-ops/client": "^0.1.0",
     "@modelcontextprotocol/sdk": "~1.28.0",
     "zod": "^3.22.0"
   },
