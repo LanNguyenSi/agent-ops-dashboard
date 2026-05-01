@@ -47,8 +47,8 @@ agent-ops-dashboard/
 ### Verification
 
 - `npm run build` (all four workspaces): green; client builds before mcp via the new dependency.
-- `npm test`: 99 tests pass (gateway 64, mcp 35).
-- `npm publish --workspace=@opentriologue/mcp --dry-run`: 10.1 kB tarball, 30 files.
+- `npm test`: 67 tests pass (gateway 32, mcp 35).
+- `npm publish --workspace=@opentriologue/mcp --dry-run`: 10.0 kB tarball, 30 files.
 
 ## [0.1.0] - 2026-04-15
 
