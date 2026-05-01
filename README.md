@@ -63,9 +63,9 @@ Reconnects send `Last-Event-ID` and replay missed events from the `agent_events`
 | Understand the components, SSE design, and GitHub integration | [docs/architecture.md](docs/architecture.md) |
 | Configure env vars, GitHub tokens, and deployment | [docs/configuration.md](docs/configuration.md) |
 
-## Companion projects
+## Other ways in
 
-- **[ops-mcp](https://github.com/LanNguyenSi/ops-mcp)**: MCP server that lets AI agents talk to the gateway directly via 9 tools (`ops_register`, `ops_heartbeat`, `ops_state_cas`, ...). Drop it into Claude Code and your agent shows up in the dashboard automatically.
+- **MCP server** ([packages/mcp/](packages/mcp/README.md), published as `@opentriologue/mcp`): lets AI agents talk to the gateway directly via 9 tools (`ops_register`, `ops_heartbeat`, `ops_state_cas`, ...). Drop it into Claude Code and your agent shows up in the dashboard automatically.
 - **API docs**: full REST surface in [docs/](docs/) for hand-rolled clients.
 - **Hosted demo**: [ops.opentriologue.ai](https://ops.opentriologue.ai) runs the latest `master`; useful as a sandbox before standing up your own.
 
@@ -79,7 +79,7 @@ Reconnects send `Last-Event-ID` and replay missed events from the `agent_events`
 | GitHub Repo Health | Live | All owner repos, CI status, filtering, sorting |
 | Alerts | Live | Alert rules with severity levels and status |
 | Pipeline Monitoring | Live | Workflow runs, stats, trends, cross-repo analytics |
-| MCP Integration | Live | See [ops-mcp](https://github.com/LanNguyenSi/ops-mcp) |
+| MCP Integration | Live | See [packages/mcp/](packages/mcp/README.md) (published as `@opentriologue/mcp`) |
 
 ## Architecture
 
@@ -88,7 +88,9 @@ agent-ops-dashboard/          # npm workspaces monorepo
 ├── apps/
 │   └── dashboard/            # Next.js frontend (ops.opentriologue.ai)
 └── packages/
-    └── gateway/              # Fastify REST API + SSE + State Store (port 3001)
+    ├── gateway/              # Fastify REST API + SSE + State Store (port 3001)
+    ├── client/               # @agent-ops/client CLI + SDK
+    └── mcp/                  # @opentriologue/mcp, MCP server for AI agents
 ```
 
 See [docs/architecture.md](docs/architecture.md) for the full breakdown.
