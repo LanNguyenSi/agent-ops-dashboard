@@ -7,15 +7,28 @@ import type {
   CommandResponse,
 } from './types';
 
+export interface AgentOpsClientOptions {
+  /**
+   * Bearer token sent as `Authorization: Bearer <token>` on every gateway call.
+   * Required when the gateway has `GATEWAY_TOKEN` set (the default in prod).
+   * If you omit it and the gateway requires auth, calls will fail with 401.
+   */
+  token?: string;
+}
+
 export class AgentOpsClient {
   private client: AxiosInstance;
 
-  constructor(gatewayUrl: string) {
+  constructor(gatewayUrl: string, options: AgentOpsClientOptions = {}) {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (options.token) {
+      headers['Authorization'] = `Bearer ${options.token}`;
+    }
     this.client = axios.create({
       baseURL: gatewayUrl,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       timeout: 10000,
     });
   }

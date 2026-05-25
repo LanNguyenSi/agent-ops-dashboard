@@ -24,6 +24,8 @@ services:
       - PORT=3001
       - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/agent_ops
       - REGISTRY_FILE=/data/agent-registry.json
+      - GATEWAY_TOKEN=${GATEWAY_TOKEN:-}
+      - GATEWAY_ALLOWED_ORIGINS=${GATEWAY_ALLOWED_ORIGINS:-http://localhost:3000}
     volumes:
       - gateway_data:/data
     depends_on:
@@ -40,6 +42,7 @@ services:
     environment:
       - NEXT_PUBLIC_GATEWAY_URL=http://gateway:3001
       - GATEWAY_INTERNAL_URL=http://gateway:3001
+      - GATEWAY_TOKEN=${GATEWAY_TOKEN:-}
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       - GITHUB_OWNER=${GITHUB_OWNER:-LanNguyenSi}
       - GITHUB_REPOS=${GITHUB_REPOS:-agent-preflight,triologue,frost-core,frost-dashboard,agent-planforge,scaffoldkit,memory-weaver,allergen-guard,plagiarism-coach,agent-dx}

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-
-const GATEWAY = process.env.GATEWAY_INTERNAL_URL ?? "http://gateway:3001";
+import { gatewayFetch } from "@/lib/gateway/client";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +10,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
     const body = await req.json() as unknown;
-    const res = await fetch(`${GATEWAY}/agents/${id}/heartbeat`, {
+    const res = await gatewayFetch(`/agents/${id}/heartbeat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

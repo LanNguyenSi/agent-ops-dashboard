@@ -11,7 +11,7 @@
     "dev:gateway": "npm run dev --workspace=packages/gateway",
     "dev:all": "npm run dev --workspace=apps/dashboard & npm run dev --workspace=packages/gateway",
     "build": "npm run build --workspaces",
-    "test": "npm run test --workspaces"
+    "test": "npm run test --workspaces --if-present"
   },
   "overrides": {
     "ip-address": "^10.1.1",
