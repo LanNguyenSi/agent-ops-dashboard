@@ -71,12 +71,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - `npm test`: gateway 47 + mcp 35 + dashboard 28 = 110 tests green.
 - Preflight: `ready: true`, confidence 0.74.
-- Live dogfood against `https://ops.opentriologue.ai/gateway/*` proved every probe (see release PR body for the full matrix):
+- Live dogfood against `https://ops.opentriologue.ai/gateway/*` proved every probe:
   - `GET /health` without token: **200** (public, as designed).
   - `GET /agents` / `POST /agents/register` / `DELETE /agents/:id` / `GET /api/events` without token: **401 UNAUTHORIZED**.
   - Same routes with token: **200**.
   - Wrong token: **401**. Lowercase `bearer`: **200** (case-insensitive header).
   - Dashboard proxy at `https://ops.opentriologue.ai/api/gateway/agents`: **200** with 3 agents (token threaded server-side).
+  - CORS allowlist probed with `Origin: https://ops.opentriologue.ai` (allowed): response carries `access-control-allow-origin: https://ops.opentriologue.ai`. With `Origin: https://evil.example` (disallowed): the response carries no `access-control-allow-origin` header, so the browser blocks the read.
 
 ### Upgrade notes
 
