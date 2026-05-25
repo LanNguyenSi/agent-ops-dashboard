@@ -1,3 +1,9 @@
+// TODO(TS2589): `server.tool()` overloads + zod 3 `.optional()/.record()`
+// schemas trip TS's instantiation depth limit on lines 25 and 51 below.
+// `npm run build` currently exits 2 with TS2589 even after the 8 GB heap
+// bump; mitigated to surface clean errors instead of OOM. Real fix: migrate
+// to `server.registerTool()` with type suppression, refactor tool wiring,
+// or wait for an SDK release that lowers ZodRawShapeCompat depth.
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { GatewayClient } from "../client.js";
