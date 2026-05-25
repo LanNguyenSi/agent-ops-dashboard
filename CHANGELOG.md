@@ -5,6 +5,85 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-05-25
+
+**Headline: Closed the public-DELETE hole on the prod gateway. `https://ops.opentriologue.ai/gateway/*` now requires `Authorization: Bearer <GATEWAY_TOKEN>` on every mutating route, and the CORS allowlist replaces `origin: '*'`. Plus three months of accumulated dependency hardening and the open-source surface.**
+
+### Added
+
+#### Gateway auth (`packages/gateway`, @agent-ops/gateway 0.2.0)
+
+- **Bearer-token authentication** (#48). New `packages/gateway/src/auth/` module:
+  - `auth.ts`: Fastify `preHandler` reads `GATEWAY_TOKEN` env. Constant-time comparison via `timingSafeEqual` (length-prechecked). Missing token loud-fails the route with **HTTP 503** so deployments without secrets fail noisily instead of silently allowing everything. Wrong or missing `Authorization: Bearer <token>` returns 401.
+  - `cors.ts`: comma-separated `GATEWAY_ALLOWED_ORIGINS` allowlist replaces `origin: '*'`. Defaults: `http://localhost:3000` (dev), `https://ops.opentriologue.ai` (prod).
+  - 47 unit tests across the gateway suite, including malformed-header, blank-env, and case-insensitive `Bearer` parsing.
+- **Auth applied to every mutating route**: `POST /agents/register`, `POST /agents/:id/heartbeat`, `DELETE /agents/:id`, `POST /agents/:id/command`, all `/api/state/*` writes, the top-level `/events` SSE, and `/api/events*`. `/health` deliberately stays public for Traefik/Docker liveness probes.
+
+#### Client SDK + CLI (`packages/client`, @agent-ops/client 0.2.0)
+
+- `AgentOpsClient` constructor accepts an optional `{ token }` option that attaches `Authorization: Bearer` to every request. Backwards-compatible (additive).
+- `loadConfig()` reads `AGENT_OPS_GATEWAY_TOKEN` from env into the new `gatewayToken` field.
+- `agent-ops register/heartbeat/status` thread the token through every `new AgentOpsClient(...)` automatically.
+- `agent-ops config` now prints whether the gateway token is set (without revealing the value).
+- Error formatter `describeError()` surfaces upstream `error.response.data.error` so a 401 actually says `UNAUTHORIZED` instead of `Request failed with status code 401`.
+
+#### MCP server (`packages/mcp`, @opentriologue/mcp 0.2.0)
+
+- Reads `GATEWAY_TOKEN` from env into `Config.gatewayToken`; the gateway client attaches `Authorization: Bearer` only when set (no `Bearer undefined` headers).
+
+#### Dashboard (`apps/dashboard`)
+
+- New server-side `lib/gateway/client.ts` (`gatewayFetch` helper). Every `app/api/gateway/**/route.ts` Next proxy now forwards the token automatically.
+- SSE proxy at `/api/gateway/events/stream` forwards upstream `Content-Type` on error responses so the browser sees the actual 401/503 body instead of an empty event stream.
+
+### Changed
+
+- **CORS**: `@fastify/cors` plugin is now configured with the `GATEWAY_ALLOWED_ORIGINS` allowlist (no more `origin: '*'`). The `/api/events/stream` route stopped echoing the duplicate `Access-Control-Allow-Origin: *` header.
+- `docker-compose.yml` and `docker-compose.prod.yml` plumb `GATEWAY_TOKEN` + `GATEWAY_ALLOWED_ORIGINS` into the gateway service, and `GATEWAY_TOKEN` into the dashboard service. Prod compose now uses long-form `env_file: .env` with `required: false` so fresh-clone CI runs do not fail.
+- `.env.example` + `.env.production.example` document the new variables with safe defaults.
+- Root `npm test` now uses `--workspaces --if-present` so workspaces without a `test` script no longer fail the suite.
+
+### Security
+
+- **axios `^1.15.2`** (#41) + **`ip-address` override `^10.1.1`**: clears 15 Dependabot alerts (4 HIGH, 10 MEDIUM, 1 LOW).
+- **`apps/dashboard` next `^16.2.6`** (#43) + scoped postcss override (#44): closes 13 CVEs.
+- **postcss `^8.5.14`** (#40) + root postcss override (#42): clears MEDIUM Dependabot alert #35 and its regression.
+- **qs `6.15.2`** (#45): CVE-2026-8723.
+- Gateway no longer accepts unauthenticated `DELETE /agents/:id` from the public internet (the original motivation for this release).
+
+### Fixed
+
+- `@modelcontextprotocol/sdk` pinned to `~1.29.0` (#47): resolves TS2589 `Type instantiation is excessively deep` blocking the MCP build.
+- `apps/dashboard` integration + contract tests short-circuit when `localhost:3000` is unreachable, so `npm test` is now green from a fresh clone (was failing on master with `ECONNREFUSED`).
+- Deleted dead `apps/dashboard/lib/agents/gateway-sse.ts` (zero callers, would have broken under the new auth gate because browser `EventSource` cannot set headers).
+- `docker-compose.yml` default `GITHUB_REPOS` list replaced dead `git-batch-cli` reference with `agent-dx` (#38).
+
+### Build / CI
+
+- `@agent-ops/client` is now publishable; the MCP publish workflow runs in the right build order so `@agent-ops/client` builds before `@opentriologue/mcp` consumes it (#37).
+- `packages/mcp` build runs with `NODE_OPTIONS=--max-old-space-size=8192` and an incremental tsc cache (#46).
+
+### Documentation
+
+- Open-source surface added (#39): LICENSE, CODE_OF_CONDUCT, CONTRIBUTING, SECURITY, plus GitHub issue + PR templates.
+
+### Verification
+
+- `npm test`: gateway 47 + mcp 35 + dashboard 28 = 110 tests green.
+- Preflight: `ready: true`, confidence 0.74.
+- Live dogfood against `https://ops.opentriologue.ai/gateway/*` proved every probe (see release PR body for the full matrix):
+  - `GET /health` without token: **200** (public, as designed).
+  - `GET /agents` / `POST /agents/register` / `DELETE /agents/:id` / `GET /api/events` without token: **401 UNAUTHORIZED**.
+  - Same routes with token: **200**.
+  - Wrong token: **401**. Lowercase `bearer`: **200** (case-insensitive header).
+  - Dashboard proxy at `https://ops.opentriologue.ai/api/gateway/agents`: **200** with 3 agents (token threaded server-side).
+
+### Upgrade notes
+
+- **Set `GATEWAY_TOKEN`** in your gateway's `.env` before deploying this release. Without it every authenticated route returns 503 by design (per the no-silent-errors policy). Generate a value with `openssl rand -hex 32`.
+- External agents using `@agent-ops/client` should pass `{ token: process.env.AGENT_OPS_GATEWAY_TOKEN }` to `new AgentOpsClient(...)`, or set `AGENT_OPS_GATEWAY_TOKEN` so the bundled CLI picks it up automatically.
+- The same token value is read on the gateway side (`GATEWAY_TOKEN`) and on the client side (`AGENT_OPS_GATEWAY_TOKEN` / `GATEWAY_TOKEN` for MCP). Pick one secret, set it everywhere it's consumed.
+
 ## [0.2.0] - 2026-05-01
 
 **Headline: Absorbed the former `LanNguyenSi/ops-mcp` standalone repo as `packages/mcp`, established the npm publish flow for `@opentriologue/mcp`, and killed type drift between the MCP wrapper and the gateway client.**
