@@ -40,6 +40,7 @@ export interface CommandResponse {
 
 export interface ClientConfig {
   gatewayUrl: string;
+  gatewayToken?: string;
   agentId?: string;
   agentName?: string;
 }

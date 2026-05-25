@@ -8,6 +8,7 @@ const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 
 const DEFAULT_CONFIG: ClientConfig = {
   gatewayUrl: process.env.AGENT_OPS_GATEWAY_URL || 'http://localhost:3001',
+  gatewayToken: process.env.AGENT_OPS_GATEWAY_TOKEN || undefined,
 };
 
 export function ensureConfigDir(): void {

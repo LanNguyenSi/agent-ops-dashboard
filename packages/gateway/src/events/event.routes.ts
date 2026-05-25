@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, preHandlerHookHandler } from "fastify";
 import { eventService } from "./event.service.js";
 
 function sendSSEEvent(reply: any, event: { id: number; eventType: string }): void {
@@ -7,9 +7,13 @@ function sendSSEEvent(reply: any, event: { id: number; eventType: string }): voi
   reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
 }
 
-export function registerEventRoutes(fastify: FastifyInstance): void {
+export function registerEventRoutes(
+  fastify: FastifyInstance,
+  preHandler?: preHandlerHookHandler,
+): void {
+  const guard = preHandler ? { preHandler } : {};
   // GET /api/events — query event log
-  fastify.get("/api/events", async (req: any, reply: any) => {
+  fastify.get("/api/events", guard, async (req: any, reply: any) => {
     const { agentId, eventType, since, cursor, limit } = req.query as Record<string, string>;
 
     const result = await eventService.getEvents({
@@ -28,13 +32,13 @@ export function registerEventRoutes(fastify: FastifyInstance): void {
   });
 
   // GET /api/events/stream — SSE live stream
-  fastify.get("/api/events/stream", async (req: any, reply: any) => {
+  fastify.get("/api/events/stream", guard, async (req: any, reply: any) => {
     reply.raw.writeHead(200, {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
       "Connection": "keep-alive",
       "X-Accel-Buffering": "no",
-      "Access-Control-Allow-Origin": "*",
+      // CORS handled by @fastify/cors (allowlist via GATEWAY_ALLOWED_ORIGINS).
     });
 
     const { agentId, eventType } = req.query as Record<string, string>;
@@ -77,7 +81,7 @@ export function registerEventRoutes(fastify: FastifyInstance): void {
   });
 
   // GET /api/events/stats — quick stats
-  fastify.get("/api/events/stats", async (_req: any, reply: any) => {
+  fastify.get("/api/events/stats", guard, async (_req: any, reply: any) => {
     return reply.send({
       activeSubscribers: eventService.subscriberCount,
     });

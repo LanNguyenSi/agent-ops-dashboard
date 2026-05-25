@@ -7,9 +7,19 @@ import { runMigrations } from './db/migrate.js';
 import { registerStateRoutes } from './state/state.routes.js';
 import { registerEventRoutes } from './events/event.routes.js';
 import { eventService } from './events/event.service.js';
+import { loadAuthConfig, makeRequireAuth } from './auth/auth.js';
+import { loadAllowedOrigins } from './auth/cors.js';
 
 const fastify = Fastify({ logger: true });
 const registry = new AgentRegistry();
+
+const authConfig = loadAuthConfig();
+const requireAuth = makeRequireAuth(authConfig);
+if (!authConfig.token) {
+  fastify.log.warn(
+    'GATEWAY_TOKEN is not configured — authenticated endpoints will respond 503. Set GATEWAY_TOKEN to enable the gateway.',
+  );
+}
 
 // SSE clients
 const sseClients = new Set<{ reply: any }>();
@@ -26,25 +36,33 @@ registry.onUpdate((agent, event) => {
   }
 });
 
-await fastify.register(cors, { origin: '*' });
+const allowedOrigins = loadAllowedOrigins();
+await fastify.register(cors, { origin: allowedOrigins });
 
 // ── Health ──────────────────────────────────────────────────
+// Public on purpose: used by Traefik, Docker, and the public
+// triologue dashboard for liveness probes. Returns no agent data.
 fastify.get('/health', async () => {
   return { status: 'ok', agents: registry.getAll().length, timestamp: new Date().toISOString() };
 });
 
 // ── Agent Registration ──────────────────────────────────────
-fastify.post<{ Body: RegisterPayload }>('/agents/register', async (req, reply) => {
-  const agent = registry.register(req.body);
-  await eventService.emit('agent.registered', agent.id, {
-    agentId: agent.id, name: agent.name, tags: (req.body as any).tags, meta: (req.body as any).meta,
-  }).catch(() => {});
-  return reply.code(201).send(agent);
-});
+fastify.post<{ Body: RegisterPayload }>(
+  '/agents/register',
+  { preHandler: requireAuth },
+  async (req, reply) => {
+    const agent = registry.register(req.body);
+    await eventService.emit('agent.registered', agent.id, {
+      agentId: agent.id, name: agent.name, tags: (req.body as any).tags, meta: (req.body as any).meta,
+    }).catch(() => {});
+    return reply.code(201).send(agent);
+  }
+);
 
 // ── Heartbeat ───────────────────────────────────────────────
 fastify.post<{ Params: { id: string }; Body: HeartbeatPayload }>(
   '/agents/:id/heartbeat',
+  { preHandler: requireAuth },
   async (req, reply) => {
     const agent = registry.heartbeat(req.params.id, req.body);
     if (!agent) return reply.code(404).send({ error: 'Agent not found' });
@@ -56,31 +74,39 @@ fastify.post<{ Params: { id: string }; Body: HeartbeatPayload }>(
 );
 
 // ── Get agent ───────────────────────────────────────────────
-fastify.get<{ Params: { id: string } }>('/agents/:id', async (req, reply) => {
-  const agent = registry.get(req.params.id);
-  if (!agent) return reply.code(404).send({ error: 'Agent not found' });
-  return agent;
-});
+fastify.get<{ Params: { id: string } }>(
+  '/agents/:id',
+  { preHandler: requireAuth },
+  async (req, reply) => {
+    const agent = registry.get(req.params.id);
+    if (!agent) return reply.code(404).send({ error: 'Agent not found' });
+    return agent;
+  }
+);
 
 // ── List agents ─────────────────────────────────────────────
-fastify.get('/agents', async () => {
+fastify.get('/agents', { preHandler: requireAuth }, async () => {
   return registry.getAll();
 });
 
 // ── Delete agent ────────────────────────────────────────────
-fastify.delete<{ Params: { id: string } }>('/agents/:id', async (req) => {
-  const deleted = registry.delete(req.params.id);
-  if (!deleted) return { error: 'Agent not found' };
-  return { ok: true };
-});
+fastify.delete<{ Params: { id: string } }>(
+  '/agents/:id',
+  { preHandler: requireAuth },
+  async (req) => {
+    const deleted = registry.delete(req.params.id);
+    if (!deleted) return { error: 'Agent not found' };
+    return { ok: true };
+  }
+);
 
 // ── Back-channel command ────────────────────────────────────
 fastify.post<{ Params: { id: string }; Body: CommandPayload }>(
   '/agents/:id/command',
+  { preHandler: requireAuth },
   async (req, reply) => {
     const agent = registry.get(req.params.id);
     if (!agent) return reply.code(404).send({ error: 'Agent not found' });
-    // For now: log command + broadcast via SSE
     const event = JSON.stringify({
       type: 'agent:command',
       data: { agentId: req.params.id, ...req.body },
@@ -98,12 +124,11 @@ fastify.post<{ Params: { id: string }; Body: CommandPayload }>(
 );
 
 // ── SSE stream ──────────────────────────────────────────────
-fastify.get('/events', async (req, reply) => {
+fastify.get('/events', { preHandler: requireAuth }, async (req, reply) => {
   reply.raw.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     Connection: 'keep-alive',
-    'Access-Control-Allow-Origin': '*',
   });
 
   // Send current snapshot on connect
@@ -135,8 +160,8 @@ fastify.get('/events', async (req, reply) => {
 if (hasDatabase()) {
   try {
     await runMigrations();
-    registerStateRoutes(fastify);
-    registerEventRoutes(fastify);
+    registerStateRoutes(fastify, requireAuth);
+    registerEventRoutes(fastify, requireAuth);
     console.log('[db] State store + Activity Feed routes registered');
   } catch (err) {
     console.error('[db] Failed to initialize DB features:', err);
@@ -144,7 +169,7 @@ if (hasDatabase()) {
   }
 } else {
   // Still register event routes (in-memory SSE works without DB)
-  registerEventRoutes(fastify);
+  registerEventRoutes(fastify, requireAuth);
   console.log('[db] DATABASE_URL not set — running in memory-only mode');
 }
 

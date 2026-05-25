@@ -1,5 +1,6 @@
 export interface Config {
   gatewayUrl: string;
+  gatewayToken: string | undefined;
   agentId: string | undefined;
 }
 
@@ -14,6 +15,7 @@ export function loadConfig(): Config {
 
   return {
     gatewayUrl: gatewayUrl.replace(/\/$/, ""), // strip trailing slash
+    gatewayToken: process.env.GATEWAY_TOKEN || undefined,
     agentId: process.env.AGENT_ID,
   };
 }

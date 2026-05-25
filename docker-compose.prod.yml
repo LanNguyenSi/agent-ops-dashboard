@@ -5,10 +5,19 @@ services:
       dockerfile: Dockerfile
     container_name: agent-ops-gateway
     restart: unless-stopped
+    # Pull deployment-specific secrets (GATEWAY_TOKEN, GATEWAY_ALLOWED_ORIGINS)
+    # from the local .env. Optional so fresh-clone / CI runs do not fail —
+    # but when GATEWAY_TOKEN is missing the gateway loud-fails authenticated
+    # routes with 503 (see packages/gateway/src/auth/auth.ts).
+    env_file:
+      - path: .env
+        required: false
     environment:
       - PORT=3001
       - NODE_ENV=production
       - REGISTRY_FILE=/data/agent-registry.json
+      - GATEWAY_TOKEN=${GATEWAY_TOKEN:-}
+      - GATEWAY_ALLOWED_ORIGINS=${GATEWAY_ALLOWED_ORIGINS:-https://ops.opentriologue.ai}
     volumes:
       - gateway_data:/data
     # Bind the gateway port to loopback only so host-side agents
@@ -50,6 +59,7 @@ services:
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
       - GITHUB_REPOS=${GITHUB_REPOS:-LanNguyenSi/telerithm,LanNguyenSi/agent-ops-dashboard,LanNguyenSi/triologue,LanNguyenSi/scaffoldkit,LanNguyenSi/agent-planforge}
       - GATEWAY_INTERNAL_URL=http://agent-ops-gateway:3001
+      - GATEWAY_TOKEN=${GATEWAY_TOKEN:-}
     depends_on:
       - gateway
     networks:

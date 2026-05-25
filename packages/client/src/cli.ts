@@ -5,6 +5,15 @@ import chalk from 'chalk';
 import { AgentOpsClient } from './api-client';
 import { loadConfig, saveConfig, getConfigPath } from './config';
 
+function describeError(error: any): string {
+  // Axios surfaces useful detail via response.data; fall back to error.message.
+  const upstream = error?.response?.data?.error;
+  const upstreamMsg = error?.response?.data?.message;
+  if (upstream && upstreamMsg) return `${upstream}: ${upstreamMsg}`;
+  if (upstream) return upstream;
+  return error?.message ?? String(error);
+}
+
 const program = new Command();
 
 program
@@ -21,7 +30,7 @@ program
   .action(async (options) => {
     try {
       const config = loadConfig();
-      const client = new AgentOpsClient(config.gatewayUrl);
+      const client = new AgentOpsClient(config.gatewayUrl, { token: config.gatewayToken });
 
       const payload: any = {
         name: options.name,
@@ -45,7 +54,7 @@ program
       console.log(chalk.green(`✅ Registered: ${agent.name} (${agent.id})`));
       console.log(chalk.gray(`   Config: ${getConfigPath()}`));
     } catch (error: any) {
-      console.error(chalk.red(`❌ Registration failed: ${error.message}`));
+      console.error(chalk.red(`❌ Registration failed: ${describeError(error)}`));
       process.exit(1);
     }
   });
@@ -60,7 +69,7 @@ program
   .action(async (agentId, options) => {
     try {
       const config = loadConfig();
-      const client = new AgentOpsClient(config.gatewayUrl);
+      const client = new AgentOpsClient(config.gatewayUrl, { token: config.gatewayToken });
 
       const id = agentId || config.agentId;
       if (!id) {
@@ -83,7 +92,7 @@ program
             const agent = await client.heartbeat(id, payload);
             console.log(chalk.green(`💓 ${new Date().toISOString()} - ${agent.status}`));
           } catch (error: any) {
-            console.error(chalk.red(`❌ ${new Date().toISOString()} - ${error.message}`));
+            console.error(chalk.red(`❌ ${new Date().toISOString()} - ${describeError(error)}`));
           }
         };
 
@@ -100,7 +109,7 @@ program
         }
       }
     } catch (error: any) {
-      console.error(chalk.red(`❌ Heartbeat failed: ${error.message}`));
+      console.error(chalk.red(`❌ Heartbeat failed: ${describeError(error)}`));
       process.exit(1);
     }
   });
@@ -111,7 +120,7 @@ program
   .action(async () => {
     try {
       const config = loadConfig();
-      const client = new AgentOpsClient(config.gatewayUrl);
+      const client = new AgentOpsClient(config.gatewayUrl, { token: config.gatewayToken });
 
       const agents = await client.getAgents();
 
@@ -142,7 +151,7 @@ program
         console.log();
       }
     } catch (error: any) {
-      console.error(chalk.red(`❌ Failed to fetch status: ${error.message}`));
+      console.error(chalk.red(`❌ Failed to fetch status: ${describeError(error)}`));
       process.exit(1);
     }
   });
@@ -154,6 +163,7 @@ program
     const config = loadConfig();
     console.log(chalk.blue('📋 Current configuration:\n'));
     console.log(chalk.gray(`   Gateway URL: ${config.gatewayUrl}`));
+    console.log(chalk.gray(`   Gateway Token: ${config.gatewayToken ? '***set***' : 'not set'}`));
     console.log(chalk.gray(`   Agent ID: ${config.agentId || 'not set'}`));
     console.log(chalk.gray(`   Agent Name: ${config.agentName || 'not set'}`));
     console.log(chalk.gray(`   Config file: ${getConfigPath()}`));

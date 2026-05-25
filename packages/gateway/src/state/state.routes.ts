@@ -1,11 +1,16 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, preHandlerHookHandler } from "fastify";
 import { PutStateSchema, CasStateSchema } from "./state.schema.js";
 import * as stateService from "./state.service.js";
 
-export function registerStateRoutes(fastify: FastifyInstance): void {
+export function registerStateRoutes(
+  fastify: FastifyInstance,
+  preHandler?: preHandlerHookHandler,
+): void {
+  const guard = preHandler ? { preHandler } : {};
   // GET /api/state/:namespace — list all keys in namespace
   fastify.get(
     "/api/state/:namespace",
+    guard,
     async (req: any, reply: any) => {
       const { namespace } = req.params as { namespace: string };
       const keys = await stateService.listNamespace(namespace);
@@ -16,6 +21,7 @@ export function registerStateRoutes(fastify: FastifyInstance): void {
   // GET /api/state/:namespace/:key — get single entry
   fastify.get(
     "/api/state/:namespace/:key",
+    guard,
     async (req: any, reply: any) => {
       const { namespace, key } = req.params as { namespace: string; key: string };
       const entry = await stateService.getState(namespace, key);
@@ -29,6 +35,7 @@ export function registerStateRoutes(fastify: FastifyInstance): void {
   // PUT /api/state/:namespace/:key — create or update
   fastify.put(
     "/api/state/:namespace/:key",
+    guard,
     async (req: any, reply: any) => {
       const { namespace, key } = req.params as { namespace: string; key: string };
       const parsed = PutStateSchema.safeParse(req.body);
@@ -47,6 +54,7 @@ export function registerStateRoutes(fastify: FastifyInstance): void {
   // DELETE /api/state/:namespace/:key — delete entry
   fastify.delete(
     "/api/state/:namespace/:key",
+    guard,
     async (req: any, reply: any) => {
       const { namespace, key } = req.params as { namespace: string; key: string };
       const deleted = await stateService.deleteState(namespace, key);
@@ -60,6 +68,7 @@ export function registerStateRoutes(fastify: FastifyInstance): void {
   // POST /api/state/:namespace/:key/cas — atomic compare-and-swap
   fastify.post(
     "/api/state/:namespace/:key/cas",
+    guard,
     async (req: any, reply: any) => {
       const { namespace, key } = req.params as { namespace: string; key: string };
       const parsed = CasStateSchema.safeParse(req.body);

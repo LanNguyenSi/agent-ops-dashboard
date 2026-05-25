@@ -1,10 +1,11 @@
 /**
  * SSE proxy: browser → Next.js → gateway
  * Required because GATEWAY_INTERNAL_URL (http://gateway:3001) is a Docker-internal
- * hostname that browsers cannot reach directly.
+ * hostname that browsers cannot reach directly. The Next layer also attaches the
+ * Bearer token so browsers (whose EventSource API can't set headers) can stream
+ * authenticated events.
  */
-
-const GATEWAY_URL = process.env.GATEWAY_INTERNAL_URL ?? "http://agent-ops-gateway:3001";
+import { gatewayFetch } from "@/lib/gateway/client";
 
 export const dynamic = "force-dynamic";
 
@@ -18,12 +19,23 @@ export async function GET(req: Request) {
   const headers: Record<string, string> = {};
   if (lastEventId) headers["last-event-id"] = lastEventId;
 
-  const upstream = await fetch(
-    `${GATEWAY_URL}/api/events/stream${params.size ? `?${params}` : ""}`,
-    { headers, signal: req.signal }
+  const upstream = await gatewayFetch(
+    `/api/events/stream${params.size ? `?${params}` : ""}`,
+    { headers, signal: req.signal },
   );
 
+  // Upstream may have refused with 401/503 + JSON; in that case forward as-is
+  // so the browser can read the actual error instead of an empty event stream.
+  if (!upstream.ok) {
+    const ct = upstream.headers.get("content-type") ?? "application/json";
+    return new Response(upstream.body, {
+      status: upstream.status,
+      headers: { "Content-Type": ct },
+    });
+  }
+
   return new Response(upstream.body, {
+    status: upstream.status,
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",

@@ -17,9 +17,13 @@ export class GatewayClient {
     body?: unknown
   ): Promise<{ data: T; status: number }> {
     const url = `${this.config.gatewayUrl}${path}`;
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (this.config.gatewayToken) {
+      headers["Authorization"] = `Bearer ${this.config.gatewayToken}`;
+    }
     const res = await fetch(url, {
       method,
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
 
