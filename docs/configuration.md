@@ -11,6 +11,8 @@ Both the gateway and the dashboard read configuration from environment variables
 | `PORT` | `3001` | HTTP port |
 | `DATABASE_URL` | (none) | PostgreSQL connection string. If unset, the gateway runs in memory-only mode (registry + in-memory SSE only); state store and persistent event log are disabled. |
 | `REGISTRY_FILE` | `agent-registry.json` (cwd) | Path to the JSON file the in-memory registry persists to. In Docker this is set to `/data/agent-registry.json` and backed by the `gateway_data` volume. |
+| `GATEWAY_TOKEN` | (none) | Bearer token required on authenticated endpoints. When unset, the gateway logs a warning at startup and authenticated routes respond `503`. Set this in `.env.production` and in the deploy environment for both the `gateway` and `dashboard` services so the dashboard's server-side calls authenticate. |
+| `GATEWAY_ALLOWED_ORIGINS` | `http://localhost:3000` | Comma-separated list of allowed CORS origins for browser clients. In compose, defaults to `http://localhost:3000`; in production, set to the dashboard's public origin (e.g. `https://ops.opentriologue.ai`). |
 
 ### Dashboard (`apps/dashboard`)
 
