@@ -1,5 +1,16 @@
 name: Publish @opentriologue/mcp
 
+# Publishes the @opentriologue/mcp workspace. Trigger either manually
+# (workflow_dispatch, with an optional dry-run) or by pushing a tag
+# `ops-mcp-v<version>` that matches packages/mcp/package.json.
+#
+# This package depends on @agent-ops/client at runtime; the preflight step
+# fails the publish if that dependency is not yet on npm, so always publish
+# the client first (publish-client.yml, tag ops-client-v<version>).
+#
+# Prerequisite (operator): repo secret NPM_TOKEN with publish rights to the
+# @opentriologue npm scope.
+
 on:
   workflow_dispatch:
     inputs:
@@ -8,9 +19,13 @@ on:
         required: false
         type: boolean
         default: false
+  push:
+    tags:
+      - "ops-mcp-v*"
 
 permissions:
   contents: read
+  id-token: write # required for npm provenance
 
 jobs:
   publish:
@@ -24,6 +39,26 @@ jobs:
           node-version: "20"
           cache: "npm"
           registry-url: "https://registry.npmjs.org"
+
+      - name: Verify package.json version matches tag
+        if: startsWith(github.ref, 'refs/tags/ops-mcp-v')
+        run: |
+          expected="${GITHUB_REF_NAME#ops-mcp-v}"
+          pkg_version=$(node -p "require('./packages/mcp/package.json').version")
+          if [ "$pkg_version" != "$expected" ]; then
+            echo "Tag version ($expected) does not match packages/mcp/package.json ($pkg_version)" >&2
+            exit 1
+          fi
+
+      - name: Preflight — ensure pinned @agent-ops/client is published
+        run: |
+          dep_range=$(node -p "require('./packages/mcp/package.json').dependencies['@agent-ops/client']")
+          echo "mcp pins @agent-ops/client@$dep_range"
+          if ! npm view "@agent-ops/client@$dep_range" version >/dev/null 2>&1; then
+            echo "FATAL: @agent-ops/client@$dep_range is not published on npm yet." >&2
+            echo "Publish the client first (tag: ops-client-v<version>)." >&2
+            exit 1
+          fi
 
       - name: Install dependencies
         run: npm ci
@@ -45,6 +80,6 @@ jobs:
 
       - name: Publish
         if: ${{ !inputs.dry-run }}
-        run: npm publish --workspace=@opentriologue/mcp
+        run: npm publish --workspace=@opentriologue/mcp --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
