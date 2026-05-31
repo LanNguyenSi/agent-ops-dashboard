@@ -50,7 +50,7 @@ jobs:
             exit 1
           fi
 
-      - name: Preflight — ensure pinned @agent-ops/client is published
+      - name: Preflight - ensure pinned @agent-ops/client is published
         run: |
           dep_range=$(node -p "require('./packages/mcp/package.json').dependencies['@agent-ops/client']")
           echo "mcp pins @agent-ops/client@$dep_range"
