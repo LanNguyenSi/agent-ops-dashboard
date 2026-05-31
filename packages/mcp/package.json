@@ -19,7 +19,7 @@
     "README.md"
   ],
   "dependencies": {
-    "@agent-ops/client": "^0.2.0",
+    "@opentriologue/client": "^0.2.0",
     "@modelcontextprotocol/sdk": "~1.29.0",
     "zod": "^3.22.0"
   },

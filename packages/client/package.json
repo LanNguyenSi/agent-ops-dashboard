@@ -1,5 +1,5 @@
 {
-  "name": "@agent-ops/client",
+  "name": "@opentriologue/client",
   "version": "0.2.0",
   "description": "CLI and SDK for agent-ops monitoring",
   "main": "dist/index.js",

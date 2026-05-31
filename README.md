@@ -89,7 +89,7 @@ agent-ops-dashboard/          # npm workspaces monorepo
 │   └── dashboard/            # Next.js frontend (ops.opentriologue.ai)
 └── packages/
     ├── gateway/              # Fastify REST API + SSE + State Store (port 3001)
-    ├── client/               # @agent-ops/client CLI + SDK
+    ├── client/               # @opentriologue/client CLI + SDK
     └── mcp/                  # @opentriologue/mcp, MCP server for AI agents
 ```
 

@@ -57,9 +57,9 @@ GATEWAY_URL=http://localhost:3001 npx @opentriologue/mcp
 
 ## Publishing
 
-`@opentriologue/mcp` depends on `@agent-ops/client` for shared domain types. Publish order: `@agent-ops/client` first, then `@opentriologue/mcp`.
+`@opentriologue/mcp` depends on `@opentriologue/client` for shared domain types. Publish order: `@opentriologue/client` first, then `@opentriologue/mcp`.
 
-Trigger the [`Publish @agent-ops/client`](../../.github/workflows/publish-client.yml) workflow first (Actions tab, Run workflow), then [`Publish @opentriologue/mcp`](../../.github/workflows/publish-mcp.yml). Both have a `dry-run` boolean input, run the dry-run path first to verify the tarball before the real publish. Both require the `NPM_TOKEN` repository secret.
+Trigger the [`Publish @opentriologue/client`](../../.github/workflows/publish-client.yml) workflow first (Actions tab, Run workflow), then [`Publish @opentriologue/mcp`](../../.github/workflows/publish-mcp.yml). Both have a `dry-run` boolean input, run the dry-run path first to verify the tarball before the real publish. Both require the `NPM_TOKEN` repository secret.
 
 ## Architecture
 

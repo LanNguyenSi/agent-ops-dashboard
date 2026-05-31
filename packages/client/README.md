@@ -1,13 +1,13 @@
-# @agent-ops/client
+# @opentriologue/client
 
 CLI and SDK for agent-ops monitoring system.
 
 ## Installation
 
 ```bash
-npm install @agent-ops/client
+npm install @opentriologue/client
 # or globally
-npm install -g @agent-ops/client
+npm install -g @opentriologue/client
 ```
 
 ## CLI Usage
@@ -43,7 +43,7 @@ agent-ops config
 ## SDK Usage
 
 ```typescript
-import { AgentOpsClient } from '@agent-ops/client';
+import { AgentOpsClient } from '@opentriologue/client';
 
 const client = new AgentOpsClient('http://localhost:3001');
 
