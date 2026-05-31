@@ -1,8 +1,8 @@
-// Domain types are sourced from @agent-ops/client so the mcp wrapper, the
+// Domain types are sourced from @opentriologue/client so the mcp wrapper, the
 // CLI/SDK client, and the gateway all share one shape. mcp keeps only the
 // MCP-protocol-specific helpers local.
 
-import type { Agent, RegisterPayload } from "@agent-ops/client";
+import type { Agent, RegisterPayload } from "@opentriologue/client";
 
 export type {
   Agent,
@@ -13,7 +13,7 @@ export type {
   StateKeyInfo,
   StateListResult,
   CasConflictError,
-} from "@agent-ops/client";
+} from "@opentriologue/client";
 
 // Aliases preserved for compatibility with existing mcp tool signatures.
 export type RegisterAgentInput = RegisterPayload;

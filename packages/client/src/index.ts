@@ -1,5 +1,5 @@
 /**
- * @agent-ops/client
+ * @opentriologue/client
  * SDK and CLI for agent-ops monitoring
  */
 

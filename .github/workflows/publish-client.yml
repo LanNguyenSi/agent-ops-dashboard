@@ -1,6 +1,6 @@
-name: Publish @agent-ops/client
+name: Publish @opentriologue/client
 
-# Publishes the @agent-ops/client workspace. Trigger either manually
+# Publishes the @opentriologue/client workspace. Trigger either manually
 # (workflow_dispatch, with an optional dry-run) or by pushing a tag
 # `ops-client-v<version>` that matches packages/client/package.json.
 #
@@ -53,16 +53,16 @@ jobs:
         run: npm ci
 
       - name: Build
-        run: npm run build --workspace=@agent-ops/client
+        run: npm run build --workspace=@opentriologue/client
 
       - name: Publish (dry-run)
         if: ${{ inputs.dry-run }}
-        run: npm publish --workspace=@agent-ops/client --dry-run
+        run: npm publish --workspace=@opentriologue/client --dry-run
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish
         if: ${{ !inputs.dry-run }}
-        run: npm publish --workspace=@agent-ops/client --provenance
+        run: npm publish --workspace=@opentriologue/client --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

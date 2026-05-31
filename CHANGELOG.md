@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   - 47 unit tests across the gateway suite, including malformed-header, blank-env, and case-insensitive `Bearer` parsing.
 - **Auth applied to every mutating route**: `POST /agents/register`, `POST /agents/:id/heartbeat`, `DELETE /agents/:id`, `POST /agents/:id/command`, all `/api/state/*` writes, the top-level `/events` SSE, and `/api/events*`. `/health` deliberately stays public for Traefik/Docker liveness probes.
 
-#### Client SDK + CLI (`packages/client`, @agent-ops/client 0.2.0)
+#### Client SDK + CLI (`packages/client`, @opentriologue/client 0.2.0)
 
 - `AgentOpsClient` constructor accepts an optional `{ token }` option that attaches `Authorization: Bearer` to every request. Backwards-compatible (additive).
 - `loadConfig()` reads `AGENT_OPS_GATEWAY_TOKEN` from env into the new `gatewayToken` field.
@@ -60,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Build / CI
 
-- `@agent-ops/client` is now publishable; the MCP publish workflow runs in the right build order so `@agent-ops/client` builds before `@opentriologue/mcp` consumes it (#37).
+- `@opentriologue/client` is now publishable; the MCP publish workflow runs in the right build order so `@opentriologue/client` builds before `@opentriologue/mcp` consumes it (#37).
 - `packages/mcp` build runs with `NODE_OPTIONS=--max-old-space-size=8192` and an incremental tsc cache (#46).
 
 ### Documentation
@@ -82,7 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Upgrade notes
 
 - **Set `GATEWAY_TOKEN`** in your gateway's `.env` before deploying this release. Without it every authenticated route returns 503 by design (per the no-silent-errors policy). Generate a value with `openssl rand -hex 32`.
-- External agents using `@agent-ops/client` should pass `{ token: process.env.AGENT_OPS_GATEWAY_TOKEN }` to `new AgentOpsClient(...)`, or set `AGENT_OPS_GATEWAY_TOKEN` so the bundled CLI picks it up automatically.
+- External agents using `@opentriologue/client` should pass `{ token: process.env.AGENT_OPS_GATEWAY_TOKEN }` to `new AgentOpsClient(...)`, or set `AGENT_OPS_GATEWAY_TOKEN` so the bundled CLI picks it up automatically.
 - The same token value is read on the gateway side (`GATEWAY_TOKEN`) and on the client side (`AGENT_OPS_GATEWAY_TOKEN` / `GATEWAY_TOKEN` for MCP). Pick one secret, set it everywhere it's consumed.
 
 ## [0.2.0] - 2026-05-01
@@ -96,14 +96,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **Imported as workspace** (#33). Source byte-identical to `LanNguyenSi/ops-mcp@master`. Mirrors the existing `packages/gateway` and `packages/client` layout: own `package.json`, `tsconfig.json`, `vitest.config.ts`. Package name unchanged (`@opentriologue/mcp`), `publishConfig.access: public` preserved. The standalone GitHub repo can now be archived.
 - **Manual publish workflow** (#34). `.github/workflows/publish-mcp.yml`, `workflow_dispatch` only, with a `dry-run` boolean input that runs `npm publish --dry-run` against npm without uploading. The real publish step uses `NODE_AUTH_TOKEN: secrets.NPM_TOKEN`. Permissions: `contents: read`.
 
-#### Client (`packages/client`, `@agent-ops/client`)
+#### Client (`packages/client`, `@opentriologue/client`)
 
 - **State-store types** mirror `packages/gateway/src/state/state.schema.ts`: `StateEntry`, `StateKeyInfo`, `StateListResult`, `CasConflictError`. The client SDK now describes the full agent-ops surface (registry + state) at the type level.
 
 ### Changed
 
-- **Type drift killed** (#35). `packages/mcp/src/types.ts` becomes a re-export shim: `Agent`, `AgentStatus`, `RegisterPayload`, `HeartbeatPayload`, plus the new state-store types are pulled from `@agent-ops/client`. `RegisterAgentInput` is an alias for `RegisterPayload`. `RegisterAgentResult` becomes `Pick<Agent, "id" | "name" | "status" | "registeredAt">`. `Agent.lastSeen` tightened from `string | null` to `string` (verified against `packages/gateway/src/registry.ts`, which never returns null), `tags` from optional to required, `status` to the strict `AgentStatus` union.
-- `packages/mcp` adds `@agent-ops/client` as a workspace dependency. Build order: client builds before mcp.
+- **Type drift killed** (#35). `packages/mcp/src/types.ts` becomes a re-export shim: `Agent`, `AgentStatus`, `RegisterPayload`, `HeartbeatPayload`, plus the new state-store types are pulled from `@opentriologue/client`. `RegisterAgentInput` is an alias for `RegisterPayload`. `RegisterAgentResult` becomes `Pick<Agent, "id" | "name" | "status" | "registeredAt">`. `Agent.lastSeen` tightened from `string | null` to `string` (verified against `packages/gateway/src/registry.ts`, which never returns null), `tags` from optional to required, `status` to the strict `AgentStatus` union.
+- `packages/mcp` adds `@opentriologue/client` as a workspace dependency. Build order: client builds before mcp.
 - `@modelcontextprotocol/sdk` pinned to `~1.28.0` in `packages/mcp` (1.29.0 triggers `TS2589 Type instantiation is excessively deep` when resolved through the workspace).
 - `packages/mcp/tsconfig.json` excludes `*.test.ts` / `*.spec.ts` from compilation so `dist/` ships only runtime files.
 - `packages/mcp/package.json` `repository.url` points at the new monorepo path with `directory: "packages/mcp"`.
@@ -120,7 +120,7 @@ agent-ops-dashboard/
 │   └── dashboard/            # Next.js frontend (ops.opentriologue.ai)
 └── packages/
     ├── gateway/              # Fastify REST API + SSE + State Store
-    ├── client/               # @agent-ops/client CLI + SDK
+    ├── client/               # @opentriologue/client CLI + SDK
     └── mcp/                  # @opentriologue/mcp, MCP server for AI agents (new)
 ```
 
