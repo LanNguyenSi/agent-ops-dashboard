@@ -5,3 +5,6 @@ node_modules/
 
 .next/
 *.tsbuildinfo
+
+# build output (rebuilt by tsc / Dockerfile; never commit the compiled bundle)
+dist/
