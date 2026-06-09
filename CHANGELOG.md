@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.3.1] - 2026-06-09
+
+Security patch for the gateway's local-run path, plus dependency hygiene. Deployed from `master` (Docker); this tag is deploy provenance. The published npm packages (`@opentriologue/mcp`, `@opentriologue/client`) are unchanged and not re-released.
+
+### Security
+
+- **Stopped tracking the stale committed gateway `dist` bundle** (PR #56, finding #40). The checked-in `packages/gateway/dist` predated the auth/CORS hardening in `src`: it registered wildcard CORS, had no `requireAuth` on any route, and emitted `Access-Control-Allow-Origin: *` on the SSE stream, and a non-Docker `npm start` ran that stale artifact directly via `node dist/index.js`. The bundle is now untracked (`git rm --cached`), `dist/` is gitignored, and a `prestart` `tsc` step rebuilds the hardened source before a non-Docker start. Docker production was unaffected (the Dockerfile already rebuilds from source).
+
+### Changed
+
+- **Dependency hygiene** (dev / lockfile, no change to the deployed runtime): hono advanced to `4.12.23` via lockfile resolution for 4 MEDIUM CVEs (PR #55, transitive, not a direct dependency), vitest bumped to `^4.1.8` in the `mcp` package devDependencies (CVE-2026-47429, PR #54), and stale planforge / scaffoldkit bootstrap artifacts removed (PR #53).
+
 ## [0.3.0] - 2026-05-25
 
 **Headline: Closed the public-DELETE hole on the prod gateway. `https://ops.opentriologue.ai/gateway/*` now requires `Authorization: Bearer <GATEWAY_TOKEN>` on every mutating route, and the CORS allowlist replaces `origin: '*'`. Plus three months of accumulated dependency hardening and the open-source surface.**
