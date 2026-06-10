@@ -75,4 +75,4 @@ jobs:
         run: npm install --workspaces --if-present
 
       - name: Run tests
-        run: npm test --workspace=apps/dashboard || echo "No tests configured yet"
+        run: npm test --workspace=apps/dashboard
