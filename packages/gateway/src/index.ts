@@ -1,12 +1,12 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { AgentRegistry } from './registry.js';
-import { RegisterPayload, HeartbeatPayload, CommandPayload } from './types.js';
+import { CommandPayload } from './types.js';
 import { hasDatabase } from './db/pool.js';
 import { runMigrations } from './db/migrate.js';
 import { registerStateRoutes } from './state/state.routes.js';
 import { registerEventRoutes } from './events/event.routes.js';
-import { eventService } from './events/event.service.js';
+import { registerAgentRoutes } from './agent.routes.js';
 import { loadAuthConfig, makeRequireAuth } from './auth/auth.js';
 import { loadAllowedOrigins } from './auth/cors.js';
 
@@ -46,59 +46,8 @@ fastify.get('/health', async () => {
   return { status: 'ok', agents: registry.getAll().length, timestamp: new Date().toISOString() };
 });
 
-// ── Agent Registration ──────────────────────────────────────
-fastify.post<{ Body: RegisterPayload }>(
-  '/agents/register',
-  { preHandler: requireAuth },
-  async (req, reply) => {
-    const agent = registry.register(req.body);
-    await eventService.emit('agent.registered', agent.id, {
-      agentId: agent.id, name: agent.name, tags: (req.body as any).tags, meta: (req.body as any).meta,
-    }).catch(() => {});
-    return reply.code(201).send(agent);
-  }
-);
-
-// ── Heartbeat ───────────────────────────────────────────────
-fastify.post<{ Params: { id: string }; Body: HeartbeatPayload }>(
-  '/agents/:id/heartbeat',
-  { preHandler: requireAuth },
-  async (req, reply) => {
-    const agent = registry.heartbeat(req.params.id, req.body);
-    if (!agent) return reply.code(404).send({ error: 'Agent not found' });
-    await eventService.emit('agent.heartbeat', req.params.id, {
-      agentId: req.params.id, status: (req.body as any).status ?? 'online',
-    }).catch(() => {});
-    return agent;
-  }
-);
-
-// ── Get agent ───────────────────────────────────────────────
-fastify.get<{ Params: { id: string } }>(
-  '/agents/:id',
-  { preHandler: requireAuth },
-  async (req, reply) => {
-    const agent = registry.get(req.params.id);
-    if (!agent) return reply.code(404).send({ error: 'Agent not found' });
-    return agent;
-  }
-);
-
-// ── List agents ─────────────────────────────────────────────
-fastify.get('/agents', { preHandler: requireAuth }, async () => {
-  return registry.getAll();
-});
-
-// ── Delete agent ────────────────────────────────────────────
-fastify.delete<{ Params: { id: string } }>(
-  '/agents/:id',
-  { preHandler: requireAuth },
-  async (req) => {
-    const deleted = registry.delete(req.params.id);
-    if (!deleted) return { error: 'Agent not found' };
-    return { ok: true };
-  }
-);
+// ── Agent registry routes (register / heartbeat / get / list / delete) ──
+registerAgentRoutes(fastify, registry, requireAuth);
 
 // ── Back-channel command ────────────────────────────────────
 fastify.post<{ Params: { id: string }; Body: CommandPayload }>(
