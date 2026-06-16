@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.3.2] - 2026-06-16
+
+Security patch (tsx/esbuild advisories) plus a gateway 404 fix and CI hardening. The published npm packages (`@opentriologue/mcp`, `@opentriologue/client`) are unchanged and not re-released.
+
+### Security
+
+- **Bumped tsx to ^4.22.4** to clear two esbuild advisories: GHSA-gv7w-rqvm-qjhr and GHSA-g7r4-m6w7-qqqr (PR #60). tsx is a dev/build dependency; no runtime change to the deployed gateway or dashboard.
+
+### Fixed
+
+- **`DELETE /agents/:id` now returns 404 when the agent does not exist** (PR #58). Previously the gateway returned 200 on a delete of an unknown agent ID, masking missing-agent bugs in callers.
+
+### Changed
+
+- **CI: fail loudly on dashboard test failures** (PR #59). Removed the `|| echo` mask that was swallowing non-zero exit codes from the dashboard test step, so a real test failure now fails the workflow run instead of silently passing.
+
 ## [0.3.1] - 2026-06-09
 
 Security patch for the gateway's local-run path, plus dependency hygiene. Deployed from `master` (Docker); this tag is deploy provenance. The published npm packages (`@opentriologue/mcp`, `@opentriologue/client`) are unchanged and not re-released.
