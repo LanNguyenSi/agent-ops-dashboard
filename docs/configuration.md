@@ -19,14 +19,11 @@ Both the gateway and the dashboard read configuration from environment variables
 | Variable | Default | Description |
 |---|---|---|
 | `PORT` | `3000` | HTTP port |
-| `NEXT_PUBLIC_GATEWAY_URL` | `http://gateway:3001` (compose) | Public gateway URL used by browser clients |
 | `GATEWAY_INTERNAL_URL` | `http://gateway:3001` (compose) | Server-side gateway URL used by Next.js API routes |
+| `GATEWAY_TOKEN` | (none) | Bearer token the dashboard attaches to its server-side gateway calls. Must match the gateway's `GATEWAY_TOKEN`, otherwise the `/api/gateway/*` proxies get `401`/`503`. |
 | `GITHUB_TOKEN` | (required for repo health) | GitHub Personal Access Token, scopes `repo` and `actions:read` |
 | `GITHUB_OWNER` | `LanNguyenSi` | Default GitHub user/org for the repo-health dashboard |
 | `GITHUB_REPOS` | (compose default list) | Comma-separated `owner/repo` pairs used by pipeline monitoring |
-| `TRIOLOGUE_API_URL` | `https://opentriologue.ai/gateway/health` | Optional health endpoint surfaced in the agent activity panel |
-| `NEXT_PUBLIC_APP_NAME` | `Agent Ops Dashboard` | Shown in the browser title |
-| `NEXT_PUBLIC_APP_VERSION` | `1.0.0` | Shown in the about panel |
 
 ### Compose-level
 
@@ -48,8 +45,8 @@ Without `GITHUB_TOKEN`, the gateway and agent registry still work, but the GitHu
 
 Two `.env.example` files ship in the repo:
 
-- `.env.example`: the minimal set for local Next.js development (just `GITHUB_TOKEN` and `GITHUB_REPOS`).
-- `.env.production.example`: the full production set, including `TRIOLOGUE_API_URL` and `NODE_ENV`.
+- `.env.example`: the minimal set for local development (`GITHUB_TOKEN`, `GITHUB_REPOS`, `GATEWAY_TOKEN`, and `GATEWAY_ALLOWED_ORIGINS`).
+- `.env.production.example`: the full production set, including `NODE_ENV` and the gateway auth settings (`GATEWAY_TOKEN`, `GATEWAY_ALLOWED_ORIGINS`).
 
 Copy whichever you need to `.env` (or `.env.production`) and fill in real values:
 
@@ -82,4 +79,4 @@ Notes:
 - The gateway runs database migrations automatically on startup via `runMigrations()`. There is no separate migration step.
 - The `gateway_data` named volume holds `agent-registry.json` so the agent list survives gateway restarts; agents are reloaded as `offline` and must heartbeat to come back online.
 - The `traefik` external network must already exist on the host before `docker compose up`.
-- The dashboard container needs both `NEXT_PUBLIC_GATEWAY_URL` (browser) and `GATEWAY_INTERNAL_URL` (server) set; in compose they both point at `http://gateway:3001`.
+- The dashboard container reaches the gateway server-side via `GATEWAY_INTERNAL_URL` (in compose, `http://gateway:3001`) and authenticates with `GATEWAY_TOKEN`. Browser clients use the dashboard's own `/api/gateway/*` proxies, so no public gateway URL needs to reach the browser.

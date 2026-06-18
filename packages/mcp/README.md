@@ -20,7 +20,8 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
       "command": "npx",
       "args": ["-y", "@opentriologue/mcp"],
       "env": {
-        "GATEWAY_URL": "http://localhost:3001"
+        "GATEWAY_URL": "http://localhost:3001",
+        "GATEWAY_TOKEN": "your-gateway-token"
       }
     }
   }
@@ -30,7 +31,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ### Manual
 
 ```bash
-GATEWAY_URL=http://localhost:3001 npx @opentriologue/mcp
+GATEWAY_URL=http://localhost:3001 GATEWAY_TOKEN=your-gateway-token npx @opentriologue/mcp
 ```
 
 ## Environment Variables
@@ -38,6 +39,7 @@ GATEWAY_URL=http://localhost:3001 npx @opentriologue/mcp
 | Variable | Required | Description |
 |---|---|---|
 | `GATEWAY_URL` | ✅ | URL of agent-ops-gateway |
+| `GATEWAY_TOKEN` | required for a secured gateway | Bearer token sent as `Authorization: Bearer <token>` on every gateway call. Required whenever the target gateway has `GATEWAY_TOKEN` set, which guards every route except `/health` in a standard deployment; without it those routes return `401`/`503`. |
 | `AGENT_ID` | optional | Default agent ID for `ops_whoami` / `ops_heartbeat` |
 
 ## Available Tools

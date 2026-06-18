@@ -7,8 +7,12 @@ agent-ops-dashboard/
 ├── apps/
 │   └── dashboard/            # Next.js frontend + dashboard API (port 3000)
 └── packages/
-    └── gateway/              # Fastify REST + SSE + state store (port 3001)
+    ├── gateway/              # Fastify REST + SSE + state store (port 3001)
+    ├── client/               # @opentriologue/client CLI + SDK (npm package, not deployed)
+    └── mcp/                  # @opentriologue/mcp MCP server (npm package, not deployed)
 ```
+
+The two deployable units are `apps/dashboard` and `packages/gateway`; `packages/client` and `packages/mcp` are published npm packages, not part of the running deployment.
 
 ## Components
 
@@ -27,7 +31,7 @@ The gateway boots in two modes depending on `DATABASE_URL`:
 
 ### Dashboard (`apps/dashboard`)
 
-Next.js 14 App Router. The `/app/api/*` routes do three jobs:
+Next.js 16 App Router. The `/app/api/*` routes do three jobs:
 
 1. **GitHub integration**: `app/api/github/*` calls the GitHub REST API via Octokit (`GITHUB_TOKEN`), aggregates CI status, open PRs, and Dependabot vulnerability counts per repo, and caches the result for 5 minutes.
 2. **Pipeline analytics**: `app/api/pipeline/*` reads workflow runs across the configured `GITHUB_REPOS` set and produces stats and trend charts rendered with Recharts on the client.

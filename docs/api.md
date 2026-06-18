@@ -7,6 +7,12 @@ agent-ops-dashboard exposes two HTTP surfaces:
 
 All examples below use the hosted gateway under the `/gateway/` prefix; for self-hosted deployments substitute `http://localhost:3001` (gateway, no prefix) and `http://localhost:3000` (dashboard).
 
+### Authentication
+
+Every gateway route except `GET /health` is protected by a Bearer token. Send `Authorization: Bearer <GATEWAY_TOKEN>` on each gateway request, using the same value configured as `GATEWAY_TOKEN` on the gateway (see [configuration.md](configuration.md)). A request with no token returns `503 GATEWAY_TOKEN_NOT_CONFIGURED` when the gateway itself has no token set, and `401 UNAUTHORIZED` when the token is missing or wrong. The gateway `curl` examples below assume `GATEWAY_TOKEN` is exported in your shell.
+
+The dashboard's own `/api/*` routes (GitHub repo health, pipeline analytics) do not take this header; the dashboard threads the gateway token server-side for its `/api/gateway/*` proxies.
+
 ## Gateway: Agents
 
 | Endpoint | Method | Description |
@@ -23,6 +29,7 @@ All examples below use the hosted gateway under the `/gateway/` prefix; for self
 
 ```bash
 curl -X POST https://ops.opentriologue.ai/gateway/agents/register \
+  -H "Authorization: Bearer $GATEWAY_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"my-agent","tags":["node"],"meta":{"region":"eu"}}'
 ```
@@ -45,6 +52,7 @@ Response (`201`):
 
 ```bash
 curl -X POST https://ops.opentriologue.ai/gateway/agents/<id>/heartbeat \
+  -H "Authorization: Bearer $GATEWAY_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"status":"busy","currentTask":"Reviewing PR #42"}'
 ```
@@ -67,6 +75,7 @@ Namespaced key-value store with atomic compare-and-swap, backed by PostgreSQL. V
 
 ```bash
 curl -X PUT https://ops.opentriologue.ai/gateway/api/state/locks/src-app-ts \
+  -H "Authorization: Bearer $GATEWAY_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"value":{"lockedBy":"ice","since":"2026-04-28T12:00:00Z"},"updatedBy":"ice"}'
 ```
@@ -90,6 +99,7 @@ Response:
 
 ```bash
 curl -X POST https://ops.opentriologue.ai/gateway/api/state/locks/src-app-ts/cas \
+  -H "Authorization: Bearer $GATEWAY_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"expectedVersion":1,"value":{"lockedBy":"lava"},"updatedBy":"lava"}'
 ```
@@ -117,7 +127,7 @@ state.cas.success   state.cas.conflict
 **Stream events:**
 
 ```bash
-curl -N https://ops.opentriologue.ai/gateway/api/events/stream
+curl -N -H "Authorization: Bearer $GATEWAY_TOKEN" https://ops.opentriologue.ai/gateway/api/events/stream
 
 id: 4821
 event: agent.heartbeat
