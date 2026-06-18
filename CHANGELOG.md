@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+> The version headings below are deploy-provenance tags for the hosted app. The private root `package.json` version is not bumped for every tag and may lag the latest entry here; the published npm packages (`@opentriologue/client`, `@opentriologue/mcp`) are versioned independently.
+
 ## [0.3.2] - 2026-06-16
 
 Security patch (tsx/esbuild advisories) plus a gateway 404 fix and CI hardening. The published npm packages (`@opentriologue/mcp`, `@opentriologue/client`) are unchanged and not re-released.

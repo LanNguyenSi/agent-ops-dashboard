@@ -40,7 +40,6 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_GATEWAY_URL=http://gateway:3001
       - GATEWAY_INTERNAL_URL=http://gateway:3001
       - GATEWAY_TOKEN=${GATEWAY_TOKEN:-}
       - GITHUB_TOKEN=${GITHUB_TOKEN}

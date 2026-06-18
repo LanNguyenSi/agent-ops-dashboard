@@ -13,6 +13,7 @@ To self-host:
 ```bash
 git clone https://github.com/LanNguyenSi/agent-ops-dashboard.git
 cd agent-ops-dashboard
+cp .env.example .env        # set GATEWAY_TOKEN: the gateway 503s every non-/health route until it is set
 docker compose up -d        # PostgreSQL + gateway (3001) + dashboard (3000)
 ```
 
@@ -20,9 +21,12 @@ Or run the dev loop without Docker:
 
 ```bash
 npm install
-make dev                    # dashboard on :3000
-npm run dev:gateway         # gateway on :3001
+export GATEWAY_TOKEN=dev-token   # the gateway has no dotenv loader, so set it in the environment
+make dev                         # dashboard on :3000
+npm run dev:gateway              # gateway on :3001
 ```
+
+The gateway requires a Bearer token: every route except `/health` returns `503` when `GATEWAY_TOKEN` is unset and `401` when a request omits `Authorization: Bearer <GATEWAY_TOKEN>`.
 
 ## What it looks like
 
@@ -30,6 +34,7 @@ Register an agent against the live gateway:
 
 ```bash
 $ curl -sX POST https://ops.opentriologue.ai/gateway/agents/register \
+    -H "Authorization: Bearer $GATEWAY_TOKEN" \
     -H "Content-Type: application/json" \
     -d '{"name":"my-agent","tags":["node"]}'
 
@@ -46,7 +51,7 @@ $ curl -sX POST https://ops.opentriologue.ai/gateway/agents/register \
 Subscribe to the activity feed and watch heartbeats and state changes flow in:
 
 ```bash
-$ curl -N https://ops.opentriologue.ai/gateway/api/events/stream
+$ curl -N -H "Authorization: Bearer $GATEWAY_TOKEN" https://ops.opentriologue.ai/gateway/api/events/stream
 
 id: 4821
 event: agent.heartbeat

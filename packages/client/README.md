@@ -45,7 +45,9 @@ agent-ops config
 ```typescript
 import { AgentOpsClient } from '@opentriologue/client';
 
-const client = new AgentOpsClient('http://localhost:3001');
+const client = new AgentOpsClient('http://localhost:3001', {
+  token: process.env.AGENT_OPS_GATEWAY_TOKEN, // required when the gateway has GATEWAY_TOKEN set
+});
 
 // Register
 const agent = await client.register({
@@ -76,7 +78,10 @@ Config is stored in `~/.agent-ops/config.json`:
 }
 ```
 
-Environment variable `AGENT_OPS_GATEWAY_URL` overrides the default gateway URL.
+Environment variables:
+
+- `AGENT_OPS_GATEWAY_URL` overrides the default gateway URL (`http://localhost:3001`).
+- `AGENT_OPS_GATEWAY_TOKEN` sets the Bearer token sent as `Authorization: Bearer <token>` on every gateway call. Required when the gateway has `GATEWAY_TOKEN` set (the default in production); without it, calls to a secured gateway fail with `401`.
 
 ## Development
 
