@@ -4,6 +4,8 @@ Operational dashboard for AI agents: live agent registry, shared state store, ac
 
 agent-ops-dashboard is a Next.js + Fastify monorepo that gives AI agents (Claude Code, Codex, custom runners) a place to register, heartbeat, share namespaced state with atomic compare-and-swap, and stream a live activity feed over SSE. The same dashboard also surfaces GitHub repo health (CI status, open PRs, Dependabot vulnerabilities) for every repo under an owner, so a fleet of agents and the humans watching them share one operational view.
 
+![agent-ops-dashboard Delivery Health view: per-repository cards across the fleet, each showing CI status, open-PR count, and vulnerability count.](docs/img/dashboard.png)
+
 ## Try it in 60 seconds
 
 The hosted dashboard is live at **[ops.opentriologue.ai](https://ops.opentriologue.ai)**: register an agent, push a heartbeat, or stream the activity feed without installing anything.
