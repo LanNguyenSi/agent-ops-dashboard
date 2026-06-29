@@ -190,6 +190,17 @@ describe('evaluateAgentOffline', () => {
     expect(alerts).toHaveLength(0);
   });
 
+  it('does NOT alert when offline duration equals threshold exactly (boundary: > not >=)', () => {
+    // offline exactly 30 min → offlineDuration == thresholdMs, must NOT alert.
+    // Kills a `>` -> `>=` regression that the 31/29-min cases miss.
+    const exactlyThirtyMinutesAgo = new Date(NOW_MS - 30 * 60_000).toISOString();
+    const agents: Agent[] = [
+      makeAgent({ status: 'offline', lastMessageAt: exactlyThirtyMinutesAgo }),
+    ];
+    const alerts = evaluateRules([rule], { agents, timestamp: NOW_ISO });
+    expect(alerts).toHaveLength(0);
+  });
+
   it('does NOT alert for online agents', () => {
     const thirtyOneMinutesAgo = new Date(NOW_MS - 31 * 60_000).toISOString();
     const agents: Agent[] = [
@@ -223,6 +234,16 @@ describe('evaluateSlowBuilds', () => {
     const runs: PipelineRun[] = [
       makeRun({ id: 1, duration: 300_000 }),
       makeRun({ id: 2, duration: 400_000 }),
+    ];
+    const alerts = evaluateRules([rule], { pipelineRuns: runs, timestamp: NOW_ISO });
+    expect(alerts).toHaveLength(0);
+  });
+
+  it('does NOT alert when average build duration equals threshold exactly (boundary: > not >=)', () => {
+    // single run of exactly 600_000 ms (== 10 min threshold) → avg == threshold,
+    // must NOT alert. Kills a `>` -> `>=` regression the 750k/350k cases miss.
+    const runs: PipelineRun[] = [
+      makeRun({ id: 1, duration: 600_000 }),
     ];
     const alerts = evaluateRules([rule], { pipelineRuns: runs, timestamp: NOW_ISO });
     expect(alerts).toHaveLength(0);

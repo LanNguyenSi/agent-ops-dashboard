@@ -46,7 +46,10 @@ describe('Gateway: POST /api/gateway/agents/register', () => {
     expect(data.id).toBe('a1');
     expect(mockGatewayFetch).toHaveBeenCalledWith(
       '/agents/register',
-      expect.objectContaining({ method: 'POST' }),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ name: 'Agent1', platform: 'linux' }),
+      }),
     );
   });
 
@@ -89,7 +92,10 @@ describe('Gateway: POST /api/gateway/agents/heartbeat', () => {
     expect(res.status).toBe(200);
     expect(mockGatewayFetch).toHaveBeenCalledWith(
       '/agents/agent-42/heartbeat',
-      expect.any(Object),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ ts: 1234567890 }),
+      }),
     );
   });
 

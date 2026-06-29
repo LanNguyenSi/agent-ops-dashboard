@@ -8,9 +8,6 @@ import { isDevServerUp, E2E_BASE } from './_e2e-helpers';
  * Server-dependent tests are reported as SKIPPED (not silently passed) when
  * no Next.js dev server is reachable. Set E2E_BASE_URL to point at a
  * non-localhost server.
- *
- * Pure unit assertions (validate severity levels, validate status values) run
- * unconditionally and never need a server.
  */
 
 let serverUp = false;
@@ -60,23 +57,5 @@ describe('Error Handling: Data Validation', () => {
     const data = await response.json();
     expect(data).toHaveProperty('runs');
     expect(Array.isArray(data.runs)).toBe(true);
-  });
-
-  // The following two tests are pure unit assertions that do not need a server.
-  it('should validate alert severity levels', () => {
-    const validSeverities = ['critical', 'warning', 'info'];
-
-    expect(validSeverities).toContain('critical');
-    expect(validSeverities).toContain('warning');
-    expect(validSeverities).toContain('info');
-    expect(validSeverities).not.toContain('invalid');
-  });
-
-  it('should validate pipeline status values', () => {
-    const validStatuses = ['success', 'failure', 'in_progress', 'cancelled', 'skipped'];
-
-    expect(validStatuses).toHaveLength(5);
-    expect(validStatuses).toContain('success');
-    expect(validStatuses).toContain('failure');
   });
 });
