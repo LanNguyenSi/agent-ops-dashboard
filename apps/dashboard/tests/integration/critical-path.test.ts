@@ -4,10 +4,9 @@ import { isDevServerUp, E2E_BASE } from './_e2e-helpers';
 /**
  * Critical Path Tests
  *
- * End-to-end probes against a running Next.js dev server. The suite
- * short-circuits each test when the server is not reachable (CI /
- * preflight), so `npm test` stays green without a backing server. Run
- * with the server up to actually exercise them.
+ * End-to-end probes against a running Next.js dev server. Each test is
+ * reported as SKIPPED (not silently passed) when the server is not
+ * reachable, ensuring honest coverage counts in CI.
  */
 
 let serverUp = false;
@@ -16,8 +15,8 @@ beforeAll(async () => {
 });
 
 describe('Critical Path: Agent Status Dashboard', () => {
-  it('should fetch and display agent activity data', async () => {
-    if (!serverUp) return;
+  it('should fetch and display agent activity data', async ({ skip }) => {
+    if (!serverUp) skip();
     const response = await fetch(`${E2E_BASE}/api/agents`);
     expect(response.ok).toBe(true);
 
@@ -34,8 +33,8 @@ describe('Critical Path: Agent Status Dashboard', () => {
     }
   });
 
-  it('should fetch pipeline runs successfully', async () => {
-    if (!serverUp) return;
+  it('should fetch pipeline runs successfully', async ({ skip }) => {
+    if (!serverUp) skip();
     const response = await fetch(`${E2E_BASE}/api/pipeline/runs`);
     expect(response.ok).toBe(true);
 
@@ -51,8 +50,8 @@ describe('Critical Path: Agent Status Dashboard', () => {
     }
   });
 
-  it('should fetch alerts with stats', async () => {
-    if (!serverUp) return;
+  it('should fetch alerts with stats', async ({ skip }) => {
+    if (!serverUp) skip();
     const response = await fetch(`${E2E_BASE}/api/alerts?includeStats=true`);
     expect(response.ok).toBe(true);
 

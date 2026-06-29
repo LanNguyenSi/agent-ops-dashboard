@@ -75,4 +75,4 @@ jobs:
         run: npm install --workspaces --if-present
 
       - name: Run tests
-        run: npm test --workspace=apps/dashboard
+        run: npm test --workspaces --if-present
