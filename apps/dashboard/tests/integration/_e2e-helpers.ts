@@ -7,9 +7,17 @@ export async function isDevServerUp(): Promise<boolean> {
   try {
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), 500);
-    await fetch(E2E_BASE, { signal: ac.signal });
+    // Probe the health JSON endpoint so a non-Next.js server at port 3000
+    // (returning HTML) does not produce a false positive.
+    const res = await fetch(`${E2E_BASE}/api/health`, { signal: ac.signal });
     clearTimeout(timer);
-    cached = true;
+    const ct = res.headers.get('content-type') ?? '';
+    if (!ct.includes('application/json')) {
+      cached = false;
+      return cached;
+    }
+    const body = await res.json() as Record<string, unknown>;
+    cached = body.status === 'ok';
   } catch {
     cached = false;
   }

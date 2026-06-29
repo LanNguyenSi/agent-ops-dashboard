@@ -4,9 +4,9 @@ import { isDevServerUp, E2E_BASE } from '../integration/_e2e-helpers';
 /**
  * Contract Tests
  *
- * Boundary contract probes against the dev server. Each test short-circuits
- * when the server is not reachable (CI / preflight), so `npm test` stays
- * green without a backing server. Set E2E_BASE_URL to point elsewhere.
+ * Boundary contract probes against the dev server. Each server-dependent
+ * test is reported as SKIPPED (not silently passed) when the Next.js dev
+ * server is not reachable. Set E2E_BASE_URL to point elsewhere.
  */
 
 let serverUp = false;
@@ -15,8 +15,8 @@ beforeAll(async () => {
 });
 
 describe('Contract: API Response Structures', () => {
-  it('should maintain stable agents API contract', async () => {
-    if (!serverUp) return;
+  it('should maintain stable agents API contract', async ({ skip }) => {
+    if (!serverUp) skip();
     const response = await fetch(`${E2E_BASE}/api/agents`);
     expect(response.ok).toBe(true);
 
@@ -39,8 +39,8 @@ describe('Contract: API Response Structures', () => {
     }
   });
 
-  it('should maintain stable pipeline API contract', async () => {
-    if (!serverUp) return;
+  it('should maintain stable pipeline API contract', async ({ skip }) => {
+    if (!serverUp) skip();
     const response = await fetch(`${E2E_BASE}/api/pipeline/runs`);
     expect(response.ok).toBe(true);
 
@@ -64,8 +64,8 @@ describe('Contract: API Response Structures', () => {
     }
   });
 
-  it('should maintain stable alerts API contract', async () => {
-    if (!serverUp) return;
+  it('should maintain stable alerts API contract', async ({ skip }) => {
+    if (!serverUp) skip();
     const response = await fetch(`${E2E_BASE}/api/alerts`);
     expect(response.ok).toBe(true);
 
@@ -91,8 +91,8 @@ describe('Contract: API Response Structures', () => {
 });
 
 describe('Contract: GitHub Integration', () => {
-  it('should handle GitHub API response structure', async () => {
-    if (!serverUp) return;
+  it('should handle GitHub API response structure', async ({ skip }) => {
+    if (!serverUp) skip();
     const response = await fetch(`${E2E_BASE}/api/pipeline/runs?limit=1`);
 
     if (response.ok) {
