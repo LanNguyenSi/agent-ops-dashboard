@@ -16,7 +16,7 @@
     "dev": "tsc --watch",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run build",
-    "test": "vitest run",
+    "test": "vitest run --coverage",
     "test:ci": "vitest run --coverage"
   },
   "keywords": ["agent", "ops", "monitoring", "cli"],
