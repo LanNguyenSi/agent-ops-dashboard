@@ -20,6 +20,13 @@ export default defineConfig({
       // below the measured baseline under this wider scope (lines 38.86 /
       // stmts 38.09 / funcs 40 / branches 27.68) so a new untested file
       // drops the gate. Raise as coverage improves.
+      //
+      // SCOPE NOTE: app/ (API route handlers under app/api/**/route.ts and
+      // the page/layout tree) is intentionally NOT in `include` yet — those
+      // handlers carry real logic but have no tests, so a new untested file
+      // under app/ is currently invisible to this gate. Closing that hole
+      // (write app-layer tests, then extend `include` to 'app/**') is a
+      // tracked follow-up, kept out of this PR to avoid ballooning scope.
       include: ['lib/**', 'components/**'],
       exclude: [
         '**/*.test.ts',
