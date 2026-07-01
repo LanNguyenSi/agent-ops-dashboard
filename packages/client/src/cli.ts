@@ -169,4 +169,15 @@ program
     console.log(chalk.gray(`   Config file: ${getConfigPath()}`));
   });
 
-program.parse();
+// This package has no "type": "module" in package.json and its tsconfig
+// targets "module": "commonjs" (tsc rejects `import.meta` here with
+// TS1470), so the correct main-module idiom is the CommonJS
+// `require.main === module` check. This is also what makes the module
+// safely importable in tests: under vitest/vite-node, `require.main` is
+// not the entry module, so `require.main === module` is false and the
+// real CLI parse never auto-fires on import.
+if (require.main === module) {
+  program.parse();
+}
+
+export { program };

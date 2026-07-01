@@ -10,7 +10,7 @@
   "scripts": {
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=8192 tsc",
     "dev": "tsx src/index.ts",
-    "test": "vitest run",
+    "test": "vitest run --coverage",
     "test:watch": "vitest",
     "prepublishOnly": "npm run build"
   },
@@ -25,10 +25,11 @@
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "@vitest/coverage-v8": "4.1.9",
     "cross-env": "^10.1.0",
     "tsx": "^4.22.4",
     "typescript": "^5.3.0",
-    "vitest": "^4.1.8"
+    "vitest": "4.1.9"
   },
   "engines": {
     "node": ">=18.0.0"
