@@ -11,14 +11,27 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text-summary'],
-      // Ratchet floor locked just below the 2026-06-29 measured baseline
-      // (lines 79.7 / stmts 78.5 / funcs 84 / branches 56.4) so coverage of
-      // the tested modules cannot silently erode. Raise as coverage improves.
+      // 2026-07-01: scoped `include` to lib/**+components/** so untested
+      // files are counted (at 0%) instead of being invisible to the gate.
+      // (No separate `all: true` flag: @vitest/coverage-v8@4.1.9 removed
+      // that option from CoverageV8Options — `include` alone now yields the
+      // same "count every matching file" behavior; verified the measured
+      // numbers are identical with/without the flag.) Floor locked just
+      // below the measured baseline under this wider scope (lines 38.86 /
+      // stmts 38.09 / funcs 40 / branches 27.68) so a new untested file
+      // drops the gate. Raise as coverage improves.
+      include: ['lib/**', 'components/**'],
+      exclude: [
+        '**/*.test.ts',
+        '**/*.test.tsx',
+        '**/*.config.*',
+        '**/types.ts',
+      ],
       thresholds: {
-        lines: 75,
-        statements: 75,
-        functions: 80,
-        branches: 50,
+        lines: 37,
+        statements: 37,
+        functions: 39,
+        branches: 26,
       },
     },
   },
