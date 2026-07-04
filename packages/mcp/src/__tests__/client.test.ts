@@ -5,7 +5,7 @@ import { GatewayClient } from "../client.js";
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
-const config = { gatewayUrl: "http://gateway:3001", agentId: "test-agent" };
+const config = { gatewayUrl: "http://gateway:3001", gatewayToken: undefined, agentId: "test-agent" };
 const client = new GatewayClient(config);
 
 function mockResponse(data: unknown, status = 200) {

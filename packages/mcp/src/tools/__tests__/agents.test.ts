@@ -31,7 +31,7 @@ function makeClient(overrides: Partial<GatewayClient> = {}): GatewayClient {
   } as unknown as GatewayClient;
 }
 
-const config: Config = { gatewayUrl: "http://gateway:3001", agentId: "default-agent" };
+const config: Config = { gatewayUrl: "http://gateway:3001", gatewayToken: undefined, agentId: "default-agent" };
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -82,7 +82,7 @@ describe("ops_heartbeat", () => {
   it("returns error when no agentId and no AGENT_ID in config", async () => {
     const client = makeClient({ sendHeartbeat: vi.fn() });
     const server = makeServer();
-    const cfgNoId: Config = { gatewayUrl: "http://gw", agentId: undefined };
+    const cfgNoId: Config = { gatewayUrl: "http://gw", gatewayToken: undefined, agentId: undefined };
     registerAgentTools(server, client, cfgNoId);
     const result = await server._call("ops_heartbeat", {}) as { isError?: boolean };
     expect(result.isError).toBe(true);
@@ -112,7 +112,7 @@ describe("ops_whoami", () => {
   it("returns error when no agentId provided and config has none", async () => {
     const client = makeClient({ getAgent: vi.fn() });
     const server = makeServer();
-    const cfgNoId: Config = { gatewayUrl: "http://gw", agentId: undefined };
+    const cfgNoId: Config = { gatewayUrl: "http://gw", gatewayToken: undefined, agentId: undefined };
     registerAgentTools(server, client, cfgNoId);
     const result = await server._call("ops_whoami", {}) as { isError?: boolean };
     expect(result.isError).toBe(true);
