@@ -19,7 +19,7 @@ function makeClient(overrides: Partial<GatewayClient> = {}): GatewayClient {
   return { getState: vi.fn(), setState: vi.fn(), casState: vi.fn(), listState: vi.fn(), deleteState: vi.fn(), registerAgent: vi.fn(), sendHeartbeat: vi.fn(), getAgent: vi.fn(), listAgents: vi.fn(), ...overrides } as unknown as GatewayClient;
 }
 
-const config: Config = { gatewayUrl: "http://gw", agentId: "test" };
+const config: Config = { gatewayUrl: "http://gw", gatewayToken: undefined, agentId: "test" };
 const fakeEntry = { id: "x", namespace: "ns", key: "k", value: { a: 1 }, version: 3, updatedBy: "bot", updatedAt: "2026-01-01", createdAt: "2026-01-01" };
 
 beforeEach(() => vi.clearAllMocks());
