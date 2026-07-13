@@ -84,7 +84,7 @@ describe("EventService.getEvents", () => {
     const svc = new EventService();
     mockQuery.mockResolvedValue({ rows: [] });
     await svc.getEvents({ agentId: "a1", eventType: "agent.heartbeat", cursor: 10 });
-    const [sql, params] = mockQuery.mock.calls[0];
+    const [, params] = mockQuery.mock.calls[0];
     expect(params).toContain("a1");
     expect(params).toContain("agent.heartbeat");
     expect(params).toContain(10);

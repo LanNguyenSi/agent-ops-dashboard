@@ -1,7 +1,7 @@
-import type { FastifyInstance, preHandlerHookHandler } from "fastify";
+import type { FastifyInstance, FastifyReply, preHandlerHookHandler } from "fastify";
 import { eventService } from "./event.service.js";
 
-function sendSSEEvent(reply: any, event: { id: number; eventType: string }): void {
+function sendSSEEvent(reply: FastifyReply, event: { id: number; eventType: string }): void {
   reply.raw.write(`id: ${event.id}\n`);
   reply.raw.write(`event: ${event.eventType}\n`);
   reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
@@ -13,7 +13,7 @@ export function registerEventRoutes(
 ): void {
   const guard = preHandler ? { preHandler } : {};
   // GET /api/events — query event log
-  fastify.get("/api/events", guard, async (req: any, reply: any) => {
+  fastify.get("/api/events", guard, async (req, reply) => {
     const { agentId, eventType, since, cursor, limit } = req.query as Record<string, string>;
 
     const result = await eventService.getEvents({
@@ -32,7 +32,7 @@ export function registerEventRoutes(
   });
 
   // GET /api/events/stream — SSE live stream
-  fastify.get("/api/events/stream", guard, async (req: any, reply: any) => {
+  fastify.get("/api/events/stream", guard, async (req, reply) => {
     reply.raw.writeHead(200, {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
@@ -81,7 +81,7 @@ export function registerEventRoutes(
   });
 
   // GET /api/events/stats — quick stats
-  fastify.get("/api/events/stats", guard, async (_req: any, reply: any) => {
+  fastify.get("/api/events/stats", guard, async (_req, reply) => {
     return reply.send({
       activeSubscribers: eventService.subscriberCount,
     });

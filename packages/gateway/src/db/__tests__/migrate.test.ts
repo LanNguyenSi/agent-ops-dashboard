@@ -93,7 +93,10 @@ describe("runMigrations", () => {
       return Promise.resolve({ rows: [] });
     });
 
-    await expect(runMigrations()).rejects.toThrow("Migration 001_bad.sql failed:");
+    await expect(runMigrations()).rejects.toMatchObject({
+      message: expect.stringContaining("Migration 001_bad.sql failed:"),
+      cause: expect.objectContaining({ message: "syntax error" }),
+    });
 
     expect(mockClientQuery.mock.calls.map((c) => c[0])).toEqual(["BEGIN", "BROKEN SQL", "ROLLBACK"]);
     expect(mockRelease).toHaveBeenCalledTimes(1);

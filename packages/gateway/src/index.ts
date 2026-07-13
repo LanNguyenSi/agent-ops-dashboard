@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import type { FastifyReply } from 'fastify';
 import cors from '@fastify/cors';
 import { AgentRegistry } from './registry.js';
 import { CommandPayload } from './types.js';
@@ -22,7 +23,7 @@ if (!authConfig.token) {
 }
 
 // SSE clients
-const sseClients = new Set<{ reply: any }>();
+const sseClients = new Set<{ reply: FastifyReply }>();
 
 // Broadcast to all SSE subscribers
 registry.onUpdate((agent, event) => {

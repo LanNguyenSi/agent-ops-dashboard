@@ -20,8 +20,8 @@ export function registerAgentRoutes(
       .emit('agent.registered', agent.id, {
         agentId: agent.id,
         name: agent.name,
-        tags: (req.body as any).tags,
-        meta: (req.body as any).meta,
+        tags: req.body.tags,
+        meta: req.body.meta,
       })
       .catch(() => {});
     return reply.code(201).send(agent);
@@ -37,7 +37,7 @@ export function registerAgentRoutes(
       await eventService
         .emit('agent.heartbeat', req.params.id, {
           agentId: req.params.id,
-          status: (req.body as any).status ?? 'online',
+          status: req.body.status ?? 'online',
         })
         .catch(() => {});
       return agent;
