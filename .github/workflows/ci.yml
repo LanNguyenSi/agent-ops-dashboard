@@ -26,7 +26,7 @@ jobs:
         run: npm install --workspaces --if-present
 
       - name: Run linter
-        run: echo "Lint skipped - eslint-config-next not yet compatible with ESLint 9 flat config (Next 16 migration)"
+        run: npm run lint --workspace=apps/dashboard
 
       - name: Type check (dashboard)
         run: npx tsc --noEmit

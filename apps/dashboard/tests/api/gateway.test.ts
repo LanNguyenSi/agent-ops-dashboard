@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { NextRequest } from 'next/server';
 import * as gatewayClient from '@/lib/gateway/client';
 
 // vi.mock must be at module scope; vitest hoists it before imports
@@ -17,14 +18,14 @@ const mockGatewayFetch = vi.mocked(gatewayClient.gatewayFetch);
 // mocks exposing only what each handler actually reads.
 // ---------------------------------------------------------------------------
 function makeRegisterReq(body: unknown = { name: 'Agent1', platform: 'linux' }) {
-  return { json: async () => body } as any;
+  return { json: async () => body } as unknown as NextRequest;
 }
 
 function makeHeartbeatReq(id: string | null, body: unknown = {}) {
   return {
     nextUrl: { searchParams: new URLSearchParams(id ? `id=${id}` : '') },
     json: async () => body,
-  } as any;
+  } as unknown as NextRequest;
 }
 
 describe('Gateway: POST /api/gateway/agents/register', () => {
@@ -37,7 +38,7 @@ describe('Gateway: POST /api/gateway/agents/register', () => {
       ok: true,
       status: 201,
       json: async () => responsePayload,
-    } as any);
+    } as unknown as Response);
 
     const res = await POST(makeRegisterReq({ name: 'Agent1', platform: 'linux' }));
 
@@ -85,7 +86,7 @@ describe('Gateway: POST /api/gateway/agents/heartbeat', () => {
       ok: true,
       status: 200,
       json: async () => ({ ok: true }),
-    } as any);
+    } as unknown as Response);
 
     const res = await POST(makeHeartbeatReq('agent-42', { ts: 1234567890 }));
 
@@ -121,7 +122,7 @@ describe('Gateway: GET /api/gateway/agents', () => {
       ok: true,
       status: 200,
       json: async () => agents,
-    } as any);
+    } as unknown as Response);
 
     const res = await GET();
 
@@ -136,7 +137,7 @@ describe('Gateway: GET /api/gateway/agents', () => {
       ok: false,
       status: 503,
       json: async () => ({ error: 'Service Unavailable' }),
-    } as any);
+    } as unknown as Response);
 
     const res = await GET();
 

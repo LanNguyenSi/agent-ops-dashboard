@@ -31,6 +31,10 @@ export async function getOpenPRs(owner: string, repo: string): Promise<PullReque
       ref: pr.base.ref,
     },
     draft: pr.draft || false,
-    mergeable_state: (pr as any).mergeable_state || undefined,
+    // The `pulls.list` response type doesn't declare `mergeable_state`
+    // (only the single-PR `pulls.get` endpoint's type does), but GitHub's
+    // API includes it on list items too, so we read it via a narrow cast
+    // instead of typing it as `any`.
+    mergeable_state: (pr as unknown as { mergeable_state?: string }).mergeable_state || undefined,
   }));
 }

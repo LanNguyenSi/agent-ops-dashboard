@@ -7,7 +7,8 @@ export async function GET() {
     if (!res.ok) throw new Error(`Gateway ${res.status}`);
     const agents = await res.json();
     return NextResponse.json(agents);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 502 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Gateway unreachable";
+    return NextResponse.json({ error: message }, { status: 502 });
   }
 }

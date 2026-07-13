@@ -67,14 +67,20 @@ export function RepoList() {
       setMeta(data.meta ?? null);
       setCacheState(data.meta?.cache ?? null);
       setError(null);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch repos");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // fetchRepos sets loading/error/data state as its very first step, so
+    // this call is a synchronous setState-in-effect by the strict new
+    // react-hooks/set-state-in-effect rule. It's the intended "refetch when
+    // filter/sort/page changes" pattern, not an accidental render loop, so
+    // it's disabled here rather than restructured.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchRepos();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sort, filter, limit, page]);

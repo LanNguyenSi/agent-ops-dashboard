@@ -9,6 +9,7 @@ import type {
   RepoSort,
   WorkflowRun,
 } from "./types";
+import { isGitHubApiError } from "./types";
 
 const REPO_CACHE_TTL_MS = 5 * 60 * 1000;
 const REPO_BATCH_SIZE = 10;
@@ -108,11 +109,14 @@ export async function getRepoHealth(owner: string, repo: string): Promise<RepoHe
       pushed_at: repository.pushed_at,
       vulnerabilities,
     };
-  } catch (error: any) {
+  } catch (error) {
     // Handle rate limiting (429 Too Many Requests or 403 Forbidden with rate limit)
-    if (error.status === 429 || (error.status === 403 && error.response?.headers["x-ratelimit-remaining"] === "0")) {
-      const resetTime = error.response?.headers["x-ratelimit-reset"];
-      throw new Error(`Rate limited. Reset at ${new Date(resetTime * 1000)}`);
+    if (
+      isGitHubApiError(error) &&
+      (error.status === 429 || (error.status === 403 && error.response?.headers?.["x-ratelimit-remaining"] === "0"))
+    ) {
+      const resetTime = error.response?.headers?.["x-ratelimit-reset"];
+      throw new Error(`Rate limited. Reset at ${new Date(Number(resetTime) * 1000)}`);
     }
     throw error;
   }
@@ -476,13 +480,15 @@ async function getDependabotVulnerabilities(owner: string, repo: string): Promis
     }
 
     return summary;
-  } catch (error: any) {
-    if (error.status === 403 && error.response?.headers["x-ratelimit-remaining"] === "0") {
-      throw error;
-    }
+  } catch (error) {
+    if (isGitHubApiError(error)) {
+      if (error.status === 403 && error.response?.headers?.["x-ratelimit-remaining"] === "0") {
+        throw error;
+      }
 
-    if (error.status === 403 || error.status === 404) {
-      return undefined;
+      if (error.status === 403 || error.status === 404) {
+        return undefined;
+      }
     }
 
     throw error;

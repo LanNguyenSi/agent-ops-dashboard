@@ -64,6 +64,11 @@ export function useActivityStream(filters: ActivityFilters): UseActivityStreamRe
   );
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Holds the latest `connect` so the reconnect timer below always invokes
+  // the current closure instead of referencing `connect` from inside its
+  // own useCallback body (which the linter flags as accessed-before-declared
+  // and which would otherwise call a stale closure after filters change).
+  const connectRef = useRef<() => void>(() => {});
 
   const clearEvents = useCallback(() => {
     setEvents([]);
@@ -115,9 +120,13 @@ export function useActivityStream(filters: ActivityFilters): UseActivityStreamRe
       );
       reconnectAttemptsRef.current += 1;
       setError(`Disconnected. Reconnecting in ${Math.round(delay / 1000)}s...`);
-      reconnectTimeoutRef.current = setTimeout(() => connect(), delay);
+      reconnectTimeoutRef.current = setTimeout(() => connectRef.current(), delay);
     };
-  }, [filters.agentId, filters.eventType]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filters.agentId, filters.eventType]);
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   useEffect(() => {
     connect();

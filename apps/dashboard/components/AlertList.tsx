@@ -22,8 +22,8 @@ export function AlertList() {
 
         setAlerts(data.alerts || []);
         setStats(data.stats || null);
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fetch alerts");
       } finally {
         setLoading(false);
       }

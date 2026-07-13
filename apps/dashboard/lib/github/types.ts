@@ -120,3 +120,25 @@ export interface GitHubRateLimit {
   reset: number;
   used: number;
 }
+
+/**
+ * Shape of the errors Octokit (`@octokit/request-error`) throws for failed
+ * API calls. We don't import the octokit error class directly since it's
+ * only a transitive dependency, not a declared one; this narrow shape is
+ * what every catch block here actually reads off the error.
+ */
+export interface GitHubApiError {
+  status?: number;
+  message?: string;
+  response?: {
+    headers?: Record<string, string>;
+  };
+}
+
+export function isGitHubApiError(error: unknown): error is GitHubApiError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    ("status" in error || "response" in error)
+  );
+}

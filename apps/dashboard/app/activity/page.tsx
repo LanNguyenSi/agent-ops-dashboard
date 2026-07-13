@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ActivityFeed } from "@/components/activity/ActivityFeed";
 
 export const metadata = {
@@ -11,9 +12,9 @@ export default function ActivityPage() {
         <div className="flex items-center gap-6">
           <h1 className="topbar-title">Agent Ops</h1>
           <nav className="flex items-center gap-4 text-sm">
-            <a href="/" className="text-gray-500 hover:text-gray-900 transition-colors">
+            <Link href="/" className="text-gray-500 hover:text-gray-900 transition-colors">
               Dashboard
-            </a>
+            </Link>
             <span className="font-medium text-gray-900">Activity</span>
           </nav>
         </div>

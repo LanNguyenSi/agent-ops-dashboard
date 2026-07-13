@@ -10,10 +10,8 @@ export async function GET(request: Request) {
     const runs = await getPipelineRuns({ limit: 200 });
     const trends = calculateTrends(runs, period);
     return NextResponse.json(trends);
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || "Failed to fetch pipeline trends" },
-      { status: 500 }
-    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to fetch pipeline trends";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
