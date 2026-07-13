@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { Octokit } from "@octokit/rest";
 import { getFailingChecks } from "@/lib/github/checks";
 import * as client from "@/lib/github/client";
 
@@ -15,7 +16,7 @@ const mockOctokit = {
 describe("getFailingChecks", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(client, "getOctokit").mockReturnValue(mockOctokit as any);
+    vi.spyOn(client, "getOctokit").mockReturnValue(mockOctokit as unknown as Octokit);
   });
 
   it("filters to conclusion === failure only and maps fields", async () => {

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { Octokit } from "@octokit/rest";
 import { applyRepoQuery, getAllRepos, getRepoHealth, normalizeRepoQuery, paginateRepos } from "@/lib/github/repos";
 import { clearTtlCache } from "@/lib/github/cache";
 import * as client from "@/lib/github/client";
@@ -26,7 +27,7 @@ describe("getRepoHealth", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearTtlCache();
-    vi.spyOn(client, "getOctokit").mockReturnValue(mockOctokit as any);
+    vi.spyOn(client, "getOctokit").mockReturnValue(mockOctokit as unknown as Octokit);
   });
   
   it("returns repo health with CI status success", async () => {

@@ -57,9 +57,12 @@ export function usePolling<T>(
   useEffect(() => {
     isMountedRef.current = true;
     
-    // Initial fetch
+    // Initial fetch on mount/config change; fetchData sets isPolling state
+    // as its first step, which is the intended "kick off polling" trigger
+    // for this hook, not an accidental render loop.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
-    
+
     // Setup interval if enabled
     if (config.enabled && config.interval > 0) {
       intervalRef.current = setInterval(fetchData, config.interval);

@@ -46,10 +46,11 @@ export async function GET(request: Request) {
     };
 
     return NextResponse.json(response);
-  } catch (error: any) {
-    const status = error.message?.startsWith("Invalid ") ? 400 : 500;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : undefined;
+    const status = message?.startsWith("Invalid ") ? 400 : 500;
     return NextResponse.json(
-      { error: error.message || "Failed to fetch repos" },
+      { error: message || "Failed to fetch repos" },
       { status }
     );
   }

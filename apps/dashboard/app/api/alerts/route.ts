@@ -14,10 +14,8 @@ export async function GET(request: Request) {
     }
     
     return NextResponse.json({ alerts });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || "Failed to fetch alerts" },
-      { status: 500 }
-    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to fetch alerts";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

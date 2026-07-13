@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { getFailingChecks } from "@/lib/github/checks";
+import type { CheckRun } from "@/lib/github/types";
+
+type CheckRunWithRepo = CheckRun & { owner: string; repo: string };
 
 export async function GET() {
   try {
@@ -23,13 +26,11 @@ export async function GET() {
     
     const allChecks = checkResults
       .filter((result) => result.status === "fulfilled")
-      .flatMap((result) => (result as PromiseFulfilledResult<any>).value);
-    
+      .flatMap((result) => (result as PromiseFulfilledResult<CheckRunWithRepo[]>).value);
+
     return NextResponse.json({ checks: allChecks });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || "Failed to fetch checks" },
-      { status: 500 }
-    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to fetch checks";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

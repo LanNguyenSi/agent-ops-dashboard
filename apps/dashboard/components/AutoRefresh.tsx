@@ -19,6 +19,10 @@ export function AutoRefresh({ onIntervalChange, onEnabledChange }: AutoRefreshPr
   const [interval, setInterval] = useState<PollingInterval>(POLLING_INTERVALS.NORMAL);
 
   useEffect(() => {
+    // Hydration-safe read: getAutoRefreshEnabled/getStoredInterval touch
+    // localStorage, which isn't available during SSR, so the real value is
+    // synced in after mount instead of used as the initial useState value.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setEnabled(getAutoRefreshEnabled());
     setInterval(getStoredInterval());
   }, []);

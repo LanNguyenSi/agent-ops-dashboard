@@ -7,10 +7,8 @@ export async function GET() {
     const runs = await getPipelineRuns({ limit: 100 });
     const stats = calculateStats(runs);
     return NextResponse.json(stats);
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || "Failed to fetch pipeline stats" },
-      { status: 500 }
-    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to fetch pipeline stats";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

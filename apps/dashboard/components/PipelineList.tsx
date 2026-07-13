@@ -20,8 +20,8 @@ export function PipelineList() {
         }
 
         setRuns(data.runs || []);
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fetch pipeline runs");
       } finally {
         setLoading(false);
       }

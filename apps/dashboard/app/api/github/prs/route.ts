@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { getOpenPRs } from "@/lib/github/prs";
+import type { PullRequest } from "@/lib/github/types";
+
+type PullRequestWithRepo = PullRequest & { owner: string; repo: string };
 
 export async function GET() {
   try {
@@ -23,13 +26,11 @@ export async function GET() {
     
     const allPRs = prResults
       .filter((result) => result.status === "fulfilled")
-      .flatMap((result) => (result as PromiseFulfilledResult<any>).value);
-    
+      .flatMap((result) => (result as PromiseFulfilledResult<PullRequestWithRepo[]>).value);
+
     return NextResponse.json({ prs: allPRs });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || "Failed to fetch PRs" },
-      { status: 500 }
-    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to fetch PRs";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

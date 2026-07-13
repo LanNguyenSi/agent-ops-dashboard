@@ -53,6 +53,11 @@ export function Select({
     if (!isOpen) return;
     const selectedIndex = options.findIndex((o) => o.value === value && !o.disabled);
     const firstEnabled = options.findIndex((o) => !o.disabled);
+    // Syncs focusedIndex to the current selection whenever the listbox
+    // opens (or its options/value change while open); there's no
+    // "derive during render" alternative since it must reset only on the
+    // isOpen transition, not on every render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFocusedIndex(selectedIndex >= 0 ? selectedIndex : firstEnabled);
   }, [isOpen, options, value]);
 

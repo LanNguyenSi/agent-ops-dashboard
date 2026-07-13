@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { Octokit } from "@octokit/rest";
 import { getOpenPRs } from "@/lib/github/prs";
 import * as client from "@/lib/github/client";
 
@@ -12,7 +13,7 @@ const mockOctokit = {
 describe("getOpenPRs", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(client, "getOctokit").mockReturnValue(mockOctokit as any);
+    vi.spyOn(client, "getOctokit").mockReturnValue(mockOctokit as unknown as Octokit);
   });
 
   it("normalizes a fully-populated PR", async () => {

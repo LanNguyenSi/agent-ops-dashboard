@@ -31,7 +31,7 @@ export async function GET() {
         repos: hasGithubRepos ? process.env.GITHUB_REPOS?.split(",").length : 0,
       },
     });
-  } catch (error) {
+  } catch {
     // Even if version check fails, return healthy
     // (deployment should not fail on health check)
     return NextResponse.json({
