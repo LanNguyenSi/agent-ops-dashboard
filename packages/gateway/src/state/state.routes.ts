@@ -11,7 +11,7 @@ export function registerStateRoutes(
   fastify.get(
     "/api/state/:namespace",
     guard,
-    async (req: any, reply: any) => {
+    async (req, reply) => {
       const { namespace } = req.params as { namespace: string };
       const keys = await stateService.listNamespace(namespace);
       return reply.send({ namespace, count: keys.length, keys });
@@ -22,7 +22,7 @@ export function registerStateRoutes(
   fastify.get(
     "/api/state/:namespace/:key",
     guard,
-    async (req: any, reply: any) => {
+    async (req, reply) => {
       const { namespace, key } = req.params as { namespace: string; key: string };
       const entry = await stateService.getState(namespace, key);
       if (!entry) {
@@ -36,7 +36,7 @@ export function registerStateRoutes(
   fastify.put(
     "/api/state/:namespace/:key",
     guard,
-    async (req: any, reply: any) => {
+    async (req, reply) => {
       const { namespace, key } = req.params as { namespace: string; key: string };
       const parsed = PutStateSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -55,7 +55,7 @@ export function registerStateRoutes(
   fastify.delete(
     "/api/state/:namespace/:key",
     guard,
-    async (req: any, reply: any) => {
+    async (req, reply) => {
       const { namespace, key } = req.params as { namespace: string; key: string };
       const deleted = await stateService.deleteState(namespace, key);
       if (!deleted) {
@@ -69,7 +69,7 @@ export function registerStateRoutes(
   fastify.post(
     "/api/state/:namespace/:key/cas",
     guard,
-    async (req: any, reply: any) => {
+    async (req, reply) => {
       const { namespace, key } = req.params as { namespace: string; key: string };
       const parsed = CasStateSchema.safeParse(req.body);
       if (!parsed.success) {
