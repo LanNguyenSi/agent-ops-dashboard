@@ -35,6 +35,9 @@ jobs:
         run: npx tsc --noEmit
         working-directory: apps/dashboard
 
+      - name: Type check (gateway)
+        run: npm run typecheck --workspace=packages/gateway
+
   build:
     name: Build
     runs-on: ubuntu-latest
