@@ -1,5 +1,9 @@
+import { createRequire } from "module";
 import coreWebVitals from "eslint-config-next/core-web-vitals";
 import nextTypescript from "eslint-config-next/typescript";
+
+const require = createRequire(import.meta.url);
+const reactVersion = require("react/package.json").version;
 
 // eslint-config-next@16.2.6 ships a native flat-config array (verified via
 // its package.json "exports" and dist/core-web-vitals.js), so we consume it
@@ -27,12 +31,14 @@ const config = [
     // context.getFilename() to locate the nearest package.json. ESLint 10
     // dropped that deprecated context method (context.filename replaces
     // it), so "detect" crashes every lint run with "contextOrFilename
-    // .getFilename is not a function". Pinning the version explicitly
-    // skips that code path entirely. Keep in sync with the installed
-    // "react" dependency version.
+    // .getFilename is not a function". Supplying the version explicitly
+    // skips that code path entirely. It is resolved from the installed
+    // react package rather than hardcoded, so a version bump inside the
+    // "^19.0.0" range cannot silently leave this describing a react that
+    // is no longer installed.
     settings: {
       react: {
-        version: "19.2.6",
+        version: reactVersion,
       },
     },
   },

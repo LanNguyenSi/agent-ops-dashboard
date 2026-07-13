@@ -22,9 +22,12 @@ export function AutoRefresh({ onIntervalChange, onEnabledChange }: AutoRefreshPr
     // Hydration-safe read: getAutoRefreshEnabled/getStoredInterval touch
     // localStorage, which isn't available during SSR, so the real value is
     // synced in after mount instead of used as the initial useState value.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // Both calls are the same intentional violation; a block disable keeps
+    // them covered even if the rule starts reporting per setState call.
+    /* eslint-disable react-hooks/set-state-in-effect */
     setEnabled(getAutoRefreshEnabled());
     setInterval(getStoredInterval());
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   const handleToggle = () => {

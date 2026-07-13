@@ -136,5 +136,9 @@ export interface GitHubApiError {
 }
 
 export function isGitHubApiError(error: unknown): error is GitHubApiError {
-  return typeof error === "object" && error !== null;
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    ("status" in error || "response" in error)
+  );
 }
