@@ -56,8 +56,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build dashboard
-        run: npm run build --workspace=apps/dashboard
+      # Root build covers every workspace, in particular packages/mcp: its
+      # tsc run is the only compile of that package and needs packages/client
+      # built first. npm iterates workspaces in glob order (alphabetical
+      # within packages/*), not topologically -- "client" sorting before
+      # "mcp" is load-bearing.
+      - name: Build all workspaces
+        run: npm run build
         env:
           GITHUB_TOKEN: mock_token_for_build
           GITHUB_REPOS: mock/repo
