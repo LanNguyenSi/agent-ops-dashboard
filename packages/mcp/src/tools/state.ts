@@ -1,7 +1,5 @@
-// TODO(TS2589): see same note in ./agents.ts. server.tool() calls on lines
-// 60 and 89 below trip TS's instantiation depth limit because of zod
-// `.optional()` + `.record()` schemas combined with the SDK 1.28 generic
-// constraint. Build exits 2 with TS2589 errors after the 8 GB heap bump.
+// This package and the MCP SDK must resolve the SAME zod major: a zod 3/4
+// mix in the SDK generics trips TS2589 (instantiation depth).
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { GatewayClient } from "../client.js";
