@@ -129,7 +129,16 @@ export function PipelineChart() {
           />
           <YAxis />
           <Tooltip
-            labelFormatter={(date) => new Date(date).toLocaleDateString()}
+            labelFormatter={(label) => {
+              if (
+                typeof label === "string" ||
+                typeof label === "number" ||
+                label instanceof Date
+              ) {
+                return new Date(label).toLocaleDateString();
+              }
+              return "";
+            }}
           />
           <Legend />
           <Line
