@@ -1,6 +1,6 @@
 {
   "name": "@opentriologue/mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "MCP server for the Triologue agent-ops platform",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -8,7 +8,7 @@
     "opentriologue-mcp": "dist/index.js"
   },
   "scripts": {
-    "build": "cross-env NODE_OPTIONS=--max-old-space-size=8192 tsc",
+    "build": "tsc",
     "dev": "tsx src/index.ts",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
@@ -26,7 +26,6 @@
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@vitest/coverage-v8": "4.1.9",
-    "cross-env": "^10.1.0",
     "tsx": "^4.22.4",
     "typescript": "^5.3.0",
     "vitest": "4.1.9"
