@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 > The version headings below are deploy-provenance tags for the hosted app. The private root `package.json` version is not bumped for every tag and may lag the latest entry here; the published npm packages (`@opentriologue/client`, `@opentriologue/mcp`) are versioned independently.
 
+## [Unreleased]
+
+### Changed
+
+- `@opentriologue/mcp` is bumped to 0.3.0 for its next publish (minor, not
+  patch): the zod `^3` to `^4` migration (PR #75) changes the advertised
+  tool schemas in the published artifact. SDK 1.29+ (currently pinned
+  ~1.30.0) converts zod-4 schemas via `zod/v4-mini` `toJSONSchema` instead
+  of `zod-to-json-schema`, so `tools/list` `inputSchema` no longer emits
+  `additionalProperties: false` and `z.record` schemas gain
+  `propertyNames: {type: "string"}`. Runtime validation is unchanged,
+  unknown keys are still stripped. Decision recorded: the old advertised
+  strictness is not restored via `.strict()` for now; if that changes, it
+  ships together with the McpServer runtime-test follow-up (task e64595ed)
+  so a real server exercises the schemas.
+- `packages/mcp` builds with plain `tsc` again. The
+  `--max-old-space-size=8192` workaround (introduced in 394980e for a
+  TS2589/OOM condition that the zod-4 alignment resolved) was dead weight:
+  a cold build peaks at roughly 287 MB against the ~4.2 GB default heap.
+  The now-unused `cross-env` devDependency is removed. The formerly
+  vestigial nested `@modelcontextprotocol/sdk` lockfile entry under
+  `packages/mcp` is already gone; the remaining nested entries there are
+  uniform (every workspace pins vitest 4.1.9 and npm gives each its own
+  nested copy), functional, not a version conflict.
+
 ## [0.3.2] - 2026-06-16
 
 Security patch (tsx/esbuild advisories) plus a gateway 404 fix and CI hardening. The published npm packages (`@opentriologue/mcp`, `@opentriologue/client`) are unchanged and not re-released.
