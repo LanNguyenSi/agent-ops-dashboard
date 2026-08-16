@@ -16,29 +16,33 @@ export default defineConfig({
       // (No separate `all: true` flag: @vitest/coverage-v8@4.1.9 removed
       // that option from CoverageV8Options — `include` alone now yields the
       // same "count every matching file" behavior; verified the measured
-      // numbers are identical with/without the flag.) Floor locked just
-      // below the measured baseline under this wider scope (lines 38.86 /
-      // stmts 38.09 / funcs 40 / branches 27.68) so a new untested file
-      // drops the gate. Raise as coverage improves.
+      // numbers are identical with/without the flag.)
       //
-      // SCOPE NOTE: app/ (API route handlers under app/api/**/route.ts and
-      // the page/layout tree) is intentionally NOT in `include` yet — those
-      // handlers carry real logic but have no tests, so a new untested file
-      // under app/ is currently invisible to this gate. Closing that hole
-      // (write app-layer tests, then extend `include` to 'app/**') is a
-      // tracked follow-up, kept out of this PR to avoid ballooning scope.
-      include: ['lib/**', 'components/**'],
+      // 2026-08-16: extended `include` to app/** to close the app-layer
+      // hole the SCOPE NOTE above used to describe (see git history for the
+      // old note). Every app/api/**/route.ts handler with real logic now
+      // has a mutation-tested happy-path + error/edge-case test under
+      // tests/api/. Page/layout files (app/page.tsx, app/activity/page.tsx,
+      // app/layout.tsx) are excluded below: they are pure JSX composition
+      // of already-tested components with no branches or logic of their
+      // own, so a render test would only re-assert React's own behavior.
+      // Floor locked just below the measured baseline under this wider
+      // scope (lines 47.75 / stmts 46.71 / funcs 46.84 / branches 35.36)
+      // so a new untested file drops the gate. Raise as coverage improves.
+      include: ['lib/**', 'components/**', 'app/**'],
       exclude: [
         '**/*.test.ts',
         '**/*.test.tsx',
         '**/*.config.*',
         '**/types.ts',
+        'app/**/page.tsx',
+        'app/layout.tsx',
       ],
       thresholds: {
-        lines: 37,
-        statements: 37,
-        functions: 39,
-        branches: 26,
+        lines: 46,
+        statements: 45,
+        functions: 45,
+        branches: 34,
       },
     },
   },
