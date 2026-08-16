@@ -67,4 +67,15 @@ describe('GET /api/pipeline/stats', () => {
     await expect(res.json()).resolves.toEqual({ error: 'db unreachable' });
     expect(mockCalculateStats).not.toHaveBeenCalled();
   });
+
+  it('falls back to the generic message when a non-Error is thrown', async () => {
+    mockGetPipelineRuns.mockRejectedValue('boom');
+    const { GET } = await import('@/app/api/pipeline/stats/route');
+
+    const res = await GET();
+
+    expect(res.status).toBe(500);
+    await expect(res.json()).resolves.toEqual({ error: 'Failed to fetch pipeline stats' });
+    expect(mockCalculateStats).not.toHaveBeenCalled();
+  });
 });

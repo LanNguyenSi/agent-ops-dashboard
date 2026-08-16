@@ -1,10 +1,14 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
-const ORIGINAL_ENV = { ...process.env };
+const ORIGINAL_GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const ORIGINAL_GITHUB_REPOS = process.env.GITHUB_REPOS;
 
 describe('GET /api/health', () => {
   afterEach(() => {
-    process.env = { ...ORIGINAL_ENV };
+    if (ORIGINAL_GITHUB_TOKEN === undefined) delete process.env.GITHUB_TOKEN;
+    else process.env.GITHUB_TOKEN = ORIGINAL_GITHUB_TOKEN;
+    if (ORIGINAL_GITHUB_REPOS === undefined) delete process.env.GITHUB_REPOS;
+    else process.env.GITHUB_REPOS = ORIGINAL_GITHUB_REPOS;
     vi.doUnmock('fs');
     vi.resetModules();
   });

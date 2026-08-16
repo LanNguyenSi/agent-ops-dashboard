@@ -62,4 +62,14 @@ describe('GET /api/alerts', () => {
     expect(res.status).toBe(500);
     await expect(res.json()).resolves.toEqual({ error: 'db down' });
   });
+
+  it('falls back to the generic message when a non-Error is thrown', async () => {
+    const { GET } = await import('@/app/api/alerts/route');
+    mockGetAlerts.mockRejectedValue('boom');
+
+    const res = await GET(makeReq('http://localhost/api/alerts'));
+
+    expect(res.status).toBe(500);
+    await expect(res.json()).resolves.toEqual({ error: 'Failed to fetch alerts' });
+  });
 });

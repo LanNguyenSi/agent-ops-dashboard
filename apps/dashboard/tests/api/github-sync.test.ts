@@ -8,6 +8,8 @@ vi.mock('@/lib/github/cache', () => ({
 const mockClearTtlCache = vi.mocked(cacheLib.clearTtlCache);
 
 describe('POST /api/github/sync', () => {
+  // The handler is branch-free (no try/catch, no conditionals), so the
+  // single happy-path test below already gives it full coverage.
   beforeEach(() => {
     vi.clearAllMocks();
   });

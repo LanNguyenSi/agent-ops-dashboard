@@ -39,4 +39,14 @@ describe('GET /api/agents', () => {
     expect(res.status).toBe(500);
     await expect(res.json()).resolves.toEqual({ error: 'upstream down' });
   });
+
+  it('falls back to the generic message when a non-Error is thrown', async () => {
+    const { GET } = await import('@/app/api/agents/route');
+    mockGetAgentActivity.mockRejectedValue('boom');
+
+    const res = await GET();
+
+    expect(res.status).toBe(500);
+    await expect(res.json()).resolves.toEqual({ error: 'Failed to fetch agent activity' });
+  });
 });

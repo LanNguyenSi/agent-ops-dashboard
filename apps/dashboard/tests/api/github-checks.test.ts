@@ -20,6 +20,9 @@ const failingCheck: CheckRun = {
 };
 
 describe('GET /api/github/checks', () => {
+  // No test exercises the outer catch's non-Error-message fallback: every
+  // per-repo lookup goes through Promise.allSettled, which never rejects,
+  // so that catch is structurally unreachable in this handler.
   beforeEach(() => {
     vi.clearAllMocks();
   });
