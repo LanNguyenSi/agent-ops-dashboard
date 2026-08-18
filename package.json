@@ -15,12 +15,12 @@
   },
   "overrides": {
     "ip-address": "^10.1.1",
-    "postcss": "^8.5.10",
+    "postcss": "^8.5.18",
     "tsx": "^4.22.4",
     "sharp": "^0.35.3",
     "nanoid": "3.3.18",
     "next": {
-      "postcss": "^8.5.10"
+      "postcss": "^8.5.18"
     }
   }
 }
