@@ -2,6 +2,11 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     environment: "node",
+    // Compiled test files under dist/ (present after `tsc`/`npm run build`)
+    // would otherwise be collected alongside their src/ sources, silently
+    // double-counting every test. CI runs from a fresh checkout so this was
+    // invisible there, but a local `npm test` after a build picked up both.
+    exclude: ["**/node_modules/**", "dist/**"],
     coverage: {
       provider: "v8",
       reporter: ["text-summary"],

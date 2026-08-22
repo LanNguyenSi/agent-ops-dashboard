@@ -52,7 +52,7 @@ Schema highlights:
 
 Two streams exist:
 
-- `/events` on the gateway, broadcasts the *registry* SSE stream: snapshots, `agent:registered`, `agent:updated`, `agent:deleted`, `agent:offline`, `agent:command`. New connections receive a `snapshot` frame on connect.
+- `/events` on the gateway, broadcasts the *registry* SSE stream: `snapshot`, `agent:registered`, `agent:updated`, `agent:deleted`, `agent:offline`, `agent:command`. New connections receive a `snapshot` frame on connect.
 - `/api/events/stream` on the gateway, the *durable activity feed*. Frames include `id:`, `event:`, and `data:`. On reconnect the client supplies `Last-Event-ID: <id>`, and the server queries `agent_events` for everything strictly greater than that id (capped at 200) before resuming live broadcasts. This is what prevents holes in the timeline during a network blip or rolling deploy.
 
 Subscribers are per-request closures registered with `eventService.subscribe({ matches, send })`, and the broadcaster removes any subscriber whose `send` throws (typically a closed socket). A 30s keepalive comment (`: heartbeat\n\n`) keeps proxies from closing idle connections; reverse proxies must not buffer (`X-Accel-Buffering: no` is set in the response headers).
