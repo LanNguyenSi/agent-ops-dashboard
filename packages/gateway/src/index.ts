@@ -1,13 +1,12 @@
 import Fastify from 'fastify';
-import type { FastifyReply } from 'fastify';
 import cors from '@fastify/cors';
 import { AgentRegistry } from './registry.js';
-import { CommandPayload, SSEEvent } from './types.js';
 import { hasDatabase } from './db/pool.js';
 import { runMigrations } from './db/migrate.js';
 import { registerStateRoutes } from './state/state.routes.js';
 import { registerEventRoutes } from './events/event.routes.js';
 import { registerAgentRoutes } from './agent.routes.js';
+import { registerSseRoutes } from './sse.routes.js';
 import { loadAuthConfig, makeRequireAuth } from './auth/auth.js';
 import { loadAllowedOrigins } from './auth/cors.js';
 
@@ -22,22 +21,6 @@ if (!authConfig.token) {
   );
 }
 
-// SSE clients
-const sseClients = new Set<{ reply: FastifyReply }>();
-
-// Broadcast to all SSE subscribers
-registry.onUpdate((agent, event) => {
-  const message: SSEEvent = { type: event, data: agent, timestamp: new Date().toISOString() };
-  const payload = `data: ${JSON.stringify(message)}\n\n`;
-  for (const client of sseClients) {
-    try {
-      client.reply.raw.write(payload);
-    } catch {
-      sseClients.delete(client);
-    }
-  }
-});
-
 const allowedOrigins = loadAllowedOrigins();
 await fastify.register(cors, { origin: allowedOrigins });
 
@@ -51,62 +34,8 @@ fastify.get('/health', async () => {
 // ── Agent registry routes (register / heartbeat / get / list / delete) ──
 registerAgentRoutes(fastify, registry, requireAuth);
 
-// ── Back-channel command ────────────────────────────────────
-fastify.post<{ Params: { id: string }; Body: CommandPayload }>(
-  '/agents/:id/command',
-  { preHandler: requireAuth },
-  async (req, reply) => {
-    const agent = registry.get(req.params.id);
-    if (!agent) return reply.code(404).send({ error: 'Agent not found' });
-    const message: SSEEvent = {
-      type: 'agent:command',
-      data: { agentId: req.params.id, ...req.body },
-      timestamp: new Date().toISOString(),
-    };
-    const event = JSON.stringify(message);
-    for (const client of sseClients) {
-      try {
-        client.reply.raw.write(`data: ${event}\n\n`);
-      } catch {
-        sseClients.delete(client);
-      }
-    }
-    return { ok: true };
-  }
-);
-
-// ── SSE stream ──────────────────────────────────────────────
-fastify.get('/events', { preHandler: requireAuth }, async (req, reply) => {
-  reply.raw.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    Connection: 'keep-alive',
-  });
-
-  // Send current snapshot on connect
-  const snapshotMessage: SSEEvent = {
-    type: 'snapshot',
-    data: registry.getAll(),
-    timestamp: new Date().toISOString(),
-  };
-  reply.raw.write(`data: ${JSON.stringify(snapshotMessage)}\n\n`);
-
-  const client = { reply };
-  sseClients.add(client);
-
-  req.raw.on('close', () => {
-    sseClients.delete(client);
-  });
-
-  // Keep connection alive
-  const keepAlive = setInterval(() => {
-    reply.raw.write(': ping\n\n');
-  }, 30_000);
-
-  req.raw.on('close', () => clearInterval(keepAlive));
-
-  await new Promise(() => {}); // keep handler open
-});
+// ── SSE stream + back-channel command ────────────────────────
+registerSseRoutes(fastify, registry, requireAuth);
 
 // ── PostgreSQL Features (State Store + Activity Feed) ────────
 if (hasDatabase()) {

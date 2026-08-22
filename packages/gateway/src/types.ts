@@ -41,8 +41,29 @@ export type RegistryEventType = (typeof REGISTRY_EVENT_TYPES)[number];
 export const SSE_EVENT_TYPES = [...REGISTRY_EVENT_TYPES, 'snapshot', 'agent:command'] as const;
 export type SSEEventType = (typeof SSE_EVENT_TYPES)[number];
 
-export interface SSEEvent {
-  type: SSEEventType;
-  data: Agent | Agent[] | (CommandPayload & { agentId: string });
+// SSEEvent is a discriminated union keyed on `type`: each registry event
+// (agent:registered/updated/offline/deleted) carries a single Agent, the
+// gateway's own `snapshot` frame carries the full Agent[] list, and the
+// `agent:command` back-channel frame carries the command payload plus the
+// target agentId. This is a typing-only change: the JSON on the wire is
+// unchanged, but a wrong type/data pairing (e.g. `snapshot` with a command
+// payload) now fails tsc instead of type-checking silently.
+export interface SSERegistryEvent {
+  type: RegistryEventType;
+  data: Agent;
   timestamp: string;
 }
+
+export interface SSESnapshotEvent {
+  type: 'snapshot';
+  data: Agent[];
+  timestamp: string;
+}
+
+export interface SSECommandEvent {
+  type: 'agent:command';
+  data: CommandPayload & { agentId: string };
+  timestamp: string;
+}
+
+export type SSEEvent = SSERegistryEvent | SSESnapshotEvent | SSECommandEvent;
