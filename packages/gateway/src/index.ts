@@ -2,7 +2,7 @@ import Fastify from 'fastify';
 import type { FastifyReply } from 'fastify';
 import cors from '@fastify/cors';
 import { AgentRegistry } from './registry.js';
-import { CommandPayload } from './types.js';
+import { CommandPayload, SSEEvent } from './types.js';
 import { hasDatabase } from './db/pool.js';
 import { runMigrations } from './db/migrate.js';
 import { registerStateRoutes } from './state/state.routes.js';
@@ -27,7 +27,8 @@ const sseClients = new Set<{ reply: FastifyReply }>();
 
 // Broadcast to all SSE subscribers
 registry.onUpdate((agent, event) => {
-  const payload = `data: ${JSON.stringify({ type: event, data: agent, timestamp: new Date().toISOString() })}\n\n`;
+  const message: SSEEvent = { type: event, data: agent, timestamp: new Date().toISOString() };
+  const payload = `data: ${JSON.stringify(message)}\n\n`;
   for (const client of sseClients) {
     try {
       client.reply.raw.write(payload);
@@ -57,11 +58,12 @@ fastify.post<{ Params: { id: string }; Body: CommandPayload }>(
   async (req, reply) => {
     const agent = registry.get(req.params.id);
     if (!agent) return reply.code(404).send({ error: 'Agent not found' });
-    const event = JSON.stringify({
+    const message: SSEEvent = {
       type: 'agent:command',
       data: { agentId: req.params.id, ...req.body },
       timestamp: new Date().toISOString(),
-    });
+    };
+    const event = JSON.stringify(message);
     for (const client of sseClients) {
       try {
         client.reply.raw.write(`data: ${event}\n\n`);
@@ -82,12 +84,12 @@ fastify.get('/events', { preHandler: requireAuth }, async (req, reply) => {
   });
 
   // Send current snapshot on connect
-  const snapshot = JSON.stringify({
+  const snapshotMessage: SSEEvent = {
     type: 'snapshot',
     data: registry.getAll(),
     timestamp: new Date().toISOString(),
-  });
-  reply.raw.write(`data: ${snapshot}\n\n`);
+  };
+  reply.raw.write(`data: ${JSON.stringify(snapshotMessage)}\n\n`);
 
   const client = { reply };
   sseClients.add(client);

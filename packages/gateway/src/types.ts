@@ -27,8 +27,22 @@ export interface CommandPayload {
   args?: string[];
 }
 
+// Event names the registry itself emits via AgentRegistry#onUpdate. This
+// array is the single source of truth: RegistryEventType is derived from it
+// below, and tests enumerate emitted names against it at runtime. Keep in
+// sync with the this.emit(...) call sites in registry.ts.
+export const REGISTRY_EVENT_TYPES = ['agent:registered', 'agent:updated', 'agent:offline', 'agent:deleted'] as const;
+export type RegistryEventType = (typeof REGISTRY_EVENT_TYPES)[number];
+
+// All event names the gateway can put on the /events SSE stream. Includes
+// the registry events above plus the two the gateway builds itself in
+// index.ts (the initial 'snapshot' frame and the 'agent:command' back-channel
+// frame). Keep in sync with docs/architecture.md's SSE stream list.
+export const SSE_EVENT_TYPES = [...REGISTRY_EVENT_TYPES, 'snapshot', 'agent:command'] as const;
+export type SSEEventType = (typeof SSE_EVENT_TYPES)[number];
+
 export interface SSEEvent {
-  type: 'agent:registered' | 'agent:updated' | 'agent:offline' | 'snapshot';
-  data: Agent | Agent[];
+  type: SSEEventType;
+  data: Agent | Agent[] | (CommandPayload & { agentId: string });
   timestamp: string;
 }

@@ -1,4 +1,4 @@
-import { Agent, AgentStatus, RegisterPayload, HeartbeatPayload } from './types.js';
+import { Agent, AgentStatus, RegisterPayload, HeartbeatPayload, RegistryEventType } from './types.js';
 import { randomUUID } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -9,7 +9,7 @@ const PERSIST_FILE = process.env.REGISTRY_FILE ?? path.join(process.cwd(), 'agen
 export class AgentRegistry {
   private agents = new Map<string, Agent>();
   private timers = new Map<string, NodeJS.Timeout>();
-  private listeners: Array<(agent: Agent, event: string) => void> = [];
+  private listeners: Array<(agent: Agent, event: RegistryEventType) => void> = [];
 
   constructor() {
     this.loadFromDisk();
@@ -73,11 +73,11 @@ export class AgentRegistry {
     return true;
   }
 
-  onUpdate(listener: (agent: Agent, event: string) => void) {
+  onUpdate(listener: (agent: Agent, event: RegistryEventType) => void) {
     this.listeners.push(listener);
   }
 
-  private emit(agent: Agent, event: string) {
+  private emit(agent: Agent, event: RegistryEventType) {
     for (const listener of this.listeners) {
       listener(agent, event);
     }
