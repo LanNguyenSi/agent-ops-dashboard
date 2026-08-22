@@ -1,6 +1,6 @@
 # Configuration
 
-Both the gateway and the dashboard read configuration from environment variables. Local development picks up `.env`; production deployments use the values configured for the `docker-compose.prod.yml` services.
+Both the gateway and the dashboard read configuration from environment variables. The dashboard (Next.js) picks up `.env` automatically in local development; the gateway has no dotenv loader, so export `GATEWAY_TOKEN` and `DATABASE_URL` in the shell instead. Production deployments use the values configured for the `docker-compose.prod.yml` services.
 
 ## Environment variables
 
