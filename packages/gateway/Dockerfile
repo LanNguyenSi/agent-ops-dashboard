@@ -5,9 +5,9 @@ COPY package.json ./
 # vitest peer pin ("Cannot read properties of null (reading 'edgesOut')"); npm >= 11 resolves it.
 RUN npm install -g npm@11
 RUN npm install
-COPY tsconfig.json ./
+COPY tsconfig.json tsconfig.build.json ./
 COPY src/ ./src/
-RUN npx tsc && cp -r src/db/migrations dist/db/migrations
+RUN npx tsc -p tsconfig.build.json && cp -r src/db/migrations dist/db/migrations
 
 FROM node:20-alpine
 WORKDIR /app
