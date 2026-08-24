@@ -8,8 +8,9 @@ name: Publish @opentriologue/mcp
 # fails the publish if that dependency is not yet on npm, so always publish
 # the client first (publish-client.yml, tag ops-client-v<version>).
 #
-# Prerequisite (operator): repo secret NPM_TOKEN with publish rights to the
-# @opentriologue npm scope.
+# Prerequisite (operator, one-time): the `@opentriologue` npm org must exist and the
+# package needs a Trusted Publisher entry on npmjs.com (repo LanNguyenSi/agent-ops-dashboard,
+# workflow publish-mcp.yml) — publishing is tokenless via OIDC, no NPM_TOKEN secret.
 
 on:
   workflow_dispatch:
@@ -25,7 +26,7 @@ on:
 
 permissions:
   contents: read
-  id-token: write # required for npm provenance
+  id-token: write # required for npm provenance and OIDC trusted publishing
 
 jobs:
   publish:
@@ -72,14 +73,19 @@ jobs:
       - name: Test
         run: npm test --workspace=@opentriologue/mcp
 
+      # npm Trusted Publishing (OIDC) needs npm >= 11.5.1; the node-bundled npm
+      # predates that floor, so upgrade right before the publish step (wave standard:
+      # install/build run under the node-bundled npm). Auth comes from the
+      # GitHub OIDC token (id-token: write above) matched against the
+      # package's Trusted Publisher entry on npmjs.com (repo
+      # LanNguyenSi/agent-ops-dashboard, workflow publish-mcp.yml) — no NPM_TOKEN.
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@11
+
       - name: Publish (dry-run)
         if: ${{ inputs.dry-run }}
         run: npm publish --workspace=@opentriologue/mcp --dry-run
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish
         if: ${{ !inputs.dry-run }}
         run: npm publish --workspace=@opentriologue/mcp --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
