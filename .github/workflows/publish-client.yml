@@ -25,7 +25,7 @@ on:
 
 permissions:
   contents: read
-  id-token: write # required for npm provenance
+  id-token: write # required for npm provenance and OIDC trusted publishing
 
 jobs:
   publish:
@@ -56,8 +56,8 @@ jobs:
       - name: Build
         run: npm run build --workspace=@opentriologue/client
 
-      # npm Trusted Publishing (OIDC) needs npm >= 11.5.1; node 20 bundles
-      # npm 9, so upgrade right before the publish step (wave standard:
+      # npm Trusted Publishing (OIDC) needs npm >= 11.5.1; the node-bundled npm
+      # predates that floor, so upgrade right before the publish step (wave standard:
       # install/build run under the node-bundled npm). Auth comes from the
       # GitHub OIDC token (id-token: write above) matched against the
       # package's Trusted Publisher entry on npmjs.com (repo
