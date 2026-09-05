@@ -11,3 +11,20 @@ dist
 build
 coverage
 *.log
+
+# Root context builds (see docker-compose.yml / docker-compose.prod.yml)
+# COPY workspace subtrees (apps/dashboard, packages/gateway) whole; the
+# plain patterns above only match a top-level match, not nested workspace
+# dirs (dockerignore patterns are not implicitly recursive like gitignore's).
+# Without these, a host-side node_modules/.next/dist/tsbuildinfo lands in
+# the build context and gets COPYed over the fresh `npm ci` / `npm run
+# build` tree inside the image.
+**/node_modules
+**/.next
+**/dist
+**/coverage
+**/*.tsbuildinfo
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.production.example

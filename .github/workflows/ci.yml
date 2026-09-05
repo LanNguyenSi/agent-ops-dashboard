@@ -92,10 +92,26 @@ jobs:
     name: Docker Smoke (images match lockfile)
     runs-on: ubuntu-latest
     needs: lint-and-typecheck
+    timeout-minutes: 30
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+
+      # scripts/check-image-versions.sh shells out to `node`; the runner
+      # image happens to bundle one, but pin it explicitly rather than
+      # relying on that.
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      # Also build via the default compose file (root context too, but a
+      # separate service/network shape for local `docker compose up`) so a
+      # regression there is caught the same way. Layers are shared with the
+      # prod build below, so this is cheap.
+      - name: Build gateway + dashboard images via docker-compose.yml
+        run: docker compose -f docker-compose.yml build gateway dashboard
 
       # Builds via the compose file (root context, packages/gateway/Dockerfile)
       # to exercise the same path deploy uses, then compares the image's
@@ -105,11 +121,76 @@ jobs:
       - name: Build gateway image
         run: docker compose -f docker-compose.prod.yml build gateway
 
+      # Resolve the image's own id right after the build instead of trusting
+      # the mutable `agent-ops-dashboard-gateway` tag: a stale image left
+      # over from a prior run on the same tag would otherwise let the check
+      # below pass against the wrong image.
+      - name: Resolve gateway image id
+        run: |
+          echo "GATEWAY_IMAGE_ID=$(docker image inspect --format '{{.Id}}' agent-ops-dashboard-gateway)" >> "$GITHUB_ENV"
+
       - name: Check gateway image versions match package-lock.json
-        run: ./scripts/check-gateway-image-versions.sh agent-ops-dashboard-gateway
+        run: ./scripts/check-image-versions.sh "$GATEWAY_IMAGE_ID"
+
+      # Negative control for scripts/check-image-versions.sh's own guard:
+      # a package absent from the lockfile must fail the check (distinct
+      # "not found" message), not silently pass because both sides resolve
+      # to null. Keeps the null-vs-null bug from going inert again.
+      - name: Self-test the check script rejects a lockfile-absent package
+        run: |
+          if ./scripts/check-image-versions.sh "$GATEWAY_IMAGE_ID" "" totally-nonexistent-package-xyz; then
+            echo "FAIL: check-image-versions.sh passed for a package absent from package-lock.json" >&2
+            exit 1
+          fi
+          echo "OK: check-image-versions.sh correctly rejected a lockfile-absent package"
+
+      - name: Boot check gateway image
+        run: |
+          docker run -d --name boot-check-gateway -p 127.0.0.1:18081:3001 \
+            -e PORT=3001 -e NODE_ENV=production -e REGISTRY_FILE=/data/agent-registry.json \
+            -e GATEWAY_TOKEN=placeholder-token -e GATEWAY_ALLOWED_ORIGINS=http://localhost:3000 \
+            "$GATEWAY_IMAGE_ID"
+          for i in $(seq 1 15); do
+            code="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18081/health || true)"
+            [ "$code" = "200" ] && break
+            sleep 1
+          done
+          docker logs boot-check-gateway
+          docker stop boot-check-gateway >/dev/null
+          docker rm boot-check-gateway >/dev/null
+          if [ "$code" != "200" ]; then
+            echo "FAIL: gateway /health returned ${code}, expected 200" >&2
+            exit 1
+          fi
+          echo "OK: gateway /health returned 200"
 
       - name: Build dashboard image
         run: docker compose -f docker-compose.prod.yml build app
 
+      - name: Resolve dashboard image id
+        run: |
+          echo "DASHBOARD_IMAGE_ID=$(docker image inspect --format '{{.Id}}' agent-ops-dashboard-app)" >> "$GITHUB_ENV"
+
       - name: Check dashboard image versions match package-lock.json
-        run: ./scripts/check-gateway-image-versions.sh agent-ops-dashboard-app /app/apps/dashboard next
+        run: ./scripts/check-image-versions.sh "$DASHBOARD_IMAGE_ID" "" next
+
+      - name: Boot check dashboard image
+        run: |
+          docker run -d --name boot-check-dashboard -p 127.0.0.1:18082:3000 \
+            -e NODE_ENV=production -e HOSTNAME=0.0.0.0 -e PORT=3000 \
+            -e GITHUB_TOKEN=placeholder-token -e GITHUB_REPOS=example/repo \
+            -e GATEWAY_INTERNAL_URL=http://localhost:3001 -e GATEWAY_TOKEN=placeholder-token \
+            "$DASHBOARD_IMAGE_ID"
+          for i in $(seq 1 15); do
+            code="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18082/api/health || true)"
+            [ "$code" = "200" ] && break
+            sleep 1
+          done
+          docker logs boot-check-dashboard
+          docker stop boot-check-dashboard >/dev/null
+          docker rm boot-check-dashboard >/dev/null
+          if [ "$code" != "200" ]; then
+            echo "FAIL: dashboard /api/health returned ${code}, expected 200" >&2
+            exit 1
+          fi
+          echo "OK: dashboard /api/health returned 200"

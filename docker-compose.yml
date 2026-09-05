@@ -16,8 +16,12 @@ services:
 
   gateway:
     build:
-      context: ./packages/gateway
-      dockerfile: Dockerfile
+      # Root context (not ./packages/gateway) so the build can COPY the root
+      # package-lock.json and install with npm ci, honoring the lockfile
+      # instead of re-resolving a fresh tree. See packages/gateway/Dockerfile.
+      context: .
+      dockerfile: packages/gateway/Dockerfile
+    image: agent-ops-dashboard-gateway
     ports:
       - "3001:3001"
     environment:
@@ -35,8 +39,12 @@ services:
 
   dashboard:
     build:
-      context: ./apps/dashboard
-      dockerfile: Dockerfile
+      # Root context (not ./apps/dashboard) so the build can COPY the root
+      # package-lock.json and install with npm ci, honoring the lockfile
+      # instead of re-resolving a fresh tree. See apps/dashboard/Dockerfile.
+      context: .
+      dockerfile: apps/dashboard/Dockerfile
+    image: agent-ops-dashboard-app
     ports:
       - "3000:3000"
     environment:

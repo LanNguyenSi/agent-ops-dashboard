@@ -6,6 +6,7 @@ services:
       # instead of re-resolving a fresh tree. See packages/gateway/Dockerfile.
       context: .
       dockerfile: packages/gateway/Dockerfile
+    image: agent-ops-dashboard-gateway
     container_name: agent-ops-gateway
     restart: unless-stopped
     # Pull deployment-specific secrets (GATEWAY_TOKEN, GATEWAY_ALLOWED_ORIGINS)
@@ -49,6 +50,7 @@ services:
       # instead of re-resolving a fresh tree. See apps/dashboard/Dockerfile.
       context: .
       dockerfile: apps/dashboard/Dockerfile
+    image: agent-ops-dashboard-app
     container_name: agent-ops-dashboard
     restart: unless-stopped
     # Pull deployment-specific secrets (GITHUB_TOKEN, etc.) from a
