@@ -6,7 +6,12 @@ services:
       # instead of re-resolving a fresh tree. See packages/gateway/Dockerfile.
       context: .
       dockerfile: packages/gateway/Dockerfile
+    # build: never pull this name, always build from the Dockerfile (the image has no registry counterpart)
+    # The tag is shared with docker-compose.yml because the build inputs
+    # (this Dockerfile, the root context) are identical; give this file
+    # distinct tags if the two ever diverge.
     image: agent-ops-dashboard-gateway
+    pull_policy: build
     container_name: agent-ops-gateway
     restart: unless-stopped
     # Pull deployment-specific secrets (GATEWAY_TOKEN, GATEWAY_ALLOWED_ORIGINS)
@@ -50,7 +55,12 @@ services:
       # instead of re-resolving a fresh tree. See apps/dashboard/Dockerfile.
       context: .
       dockerfile: apps/dashboard/Dockerfile
+    # build: never pull this name, always build from the Dockerfile (the image has no registry counterpart)
+    # The tag is shared with docker-compose.yml because the build inputs
+    # (this Dockerfile, the root context) are identical; give this file
+    # distinct tags if the two ever diverge.
     image: agent-ops-dashboard-app
+    pull_policy: build
     container_name: agent-ops-dashboard
     restart: unless-stopped
     # Pull deployment-specific secrets (GITHUB_TOKEN, etc.) from a

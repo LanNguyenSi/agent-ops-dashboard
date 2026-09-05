@@ -23,7 +23,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   README quickstart uses) is migrated to the same root-context shape as
   `docker-compose.prod.yml`; it was left on `context: ./packages/gateway`
   and `context: ./apps/dashboard` after the change above, so the quickstart
-  no longer built at all (`"/package-lock.json": not found`).
+  no longer built at all (`"/package-lock.json": not found`). A separate,
+  pre-existing `network traefik declared as external, but could not be
+  found` failure on a fresh machine is unrelated to this build error; the
+  README quickstart now documents the `docker network create traefik`
+  prerequisite instead.
 - The root `.dockerignore` patterns (`node_modules`, `.next`, `dist`, ...)
   only matched the repo root, not nested workspace directories; with a
   root build context they let a host-side `apps/dashboard/node_modules`,
@@ -60,10 +64,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `agent-ops-dashboard-app`) instead of letting compose derive them from
   the checkout directory's basename; `container_name` is unchanged. The
   `docker-smoke` CI job also resolves each image's id right after building
-  it and checks that id rather than the mutable tag, so a stale same-named
-  image left over from a prior run can't pass the check in its place.
-  Deploys on the VPS will show these image names in `docker image ls`
-  going forward.
+  it and checks that id rather than the mutable tag: the id pins the
+  checked artifact to the image this step built, so a later re-tag of the
+  same name can't shift what the check inspected.
+  The names are now explicit instead of derived from the checkout
+  directory's basename, even though the derived names were already
+  identical.
 - The `docker-smoke` CI job gained a 30-minute timeout, an explicit
   `actions/setup-node@v5` (Node 22) step for the check script's `node`
   dependency, a build of `docker-compose.yml` (catches the regression

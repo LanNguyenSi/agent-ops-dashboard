@@ -106,6 +106,25 @@ jobs:
         with:
           node-version: "22"
 
+      # Guards the recursive .dockerignore patterns (**/node_modules, etc.):
+      # if they ever regress to matching only the repo root, a nested
+      # apps/dashboard/node_modules would leak into every build context
+      # that follows in this job. Plant a marker file there, build a
+      # throwaway image over the same repo-root context, and fail if the
+      # marker shows up inside it.
+      - name: Guard the recursive .dockerignore against a leaked node_modules
+        run: |
+          trap 'rm -rf apps/dashboard/node_modules' EXIT
+          mkdir -p apps/dashboard/node_modules
+          touch apps/dashboard/node_modules/LEAK-MARKER
+          printf 'FROM alpine:3.20\nWORKDIR /ctx\nCOPY . .\n' | docker build -q -t dockerignore-leak-check -f - .
+          if docker run --rm dockerignore-leak-check find /ctx -name LEAK-MARKER | grep -q .; then
+            echo "FAIL: LEAK-MARKER found in the build context; .dockerignore is not excluding nested node_modules" >&2
+            exit 1
+          fi
+          echo "OK: nested node_modules excluded from the build context"
+          docker rmi dockerignore-leak-check >/dev/null
+
       # Also build via the default compose file (root context too, but a
       # separate service/network shape for local `docker compose up`) so a
       # regression there is caught the same way. Layers are shared with the
@@ -121,13 +140,15 @@ jobs:
       - name: Build gateway image
         run: docker compose -f docker-compose.prod.yml build gateway
 
-      # Resolve the image's own id right after the build instead of trusting
-      # the mutable `agent-ops-dashboard-gateway` tag: a stale image left
-      # over from a prior run on the same tag would otherwise let the check
-      # below pass against the wrong image.
+      # The id pins the check below to the image this step just built, so a
+      # later re-tag of `agent-ops-dashboard-gateway` (e.g. a stale image
+      # left over from a prior run reusing the tag) can't shift what the
+      # check inspects.
       - name: Resolve gateway image id
         run: |
-          echo "GATEWAY_IMAGE_ID=$(docker image inspect --format '{{.Id}}' agent-ops-dashboard-gateway)" >> "$GITHUB_ENV"
+          id="$(docker image inspect --format '{{.Id}}' agent-ops-dashboard-gateway)"
+          [ -n "$id" ] || { echo "empty image id" >&2; exit 1; }
+          echo "GATEWAY_IMAGE_ID=$id" >> "$GITHUB_ENV"
 
       - name: Check gateway image versions match package-lock.json
         run: ./scripts/check-image-versions.sh "$GATEWAY_IMAGE_ID"
@@ -138,8 +159,16 @@ jobs:
       # to null. Keeps the null-vs-null bug from going inert again.
       - name: Self-test the check script rejects a lockfile-absent package
         run: |
-          if ./scripts/check-image-versions.sh "$GATEWAY_IMAGE_ID" "" totally-nonexistent-package-xyz; then
+          output="$(./scripts/check-image-versions.sh "$GATEWAY_IMAGE_ID" "" totally-nonexistent-package-xyz 2>&1)"
+          status=$?
+          if [ "$status" -eq 0 ]; then
             echo "FAIL: check-image-versions.sh passed for a package absent from package-lock.json" >&2
+            echo "$output" >&2
+            exit 1
+          fi
+          if ! echo "$output" | grep -q "not found in package-lock.json"; then
+            echo "FAIL: check-image-versions.sh failed for the wrong reason" >&2
+            echo "$output" >&2
             exit 1
           fi
           echo "OK: check-image-versions.sh correctly rejected a lockfile-absent package"
@@ -167,9 +196,15 @@ jobs:
       - name: Build dashboard image
         run: docker compose -f docker-compose.prod.yml build app
 
+      # The id pins the check below to the image this step just built, so a
+      # later re-tag of `agent-ops-dashboard-app` (e.g. a stale image left
+      # over from a prior run reusing the tag) can't shift what the check
+      # inspects.
       - name: Resolve dashboard image id
         run: |
-          echo "DASHBOARD_IMAGE_ID=$(docker image inspect --format '{{.Id}}' agent-ops-dashboard-app)" >> "$GITHUB_ENV"
+          id="$(docker image inspect --format '{{.Id}}' agent-ops-dashboard-app)"
+          [ -n "$id" ] || { echo "empty image id" >&2; exit 1; }
+          echo "DASHBOARD_IMAGE_ID=$id" >> "$GITHUB_ENV"
 
       - name: Check dashboard image versions match package-lock.json
         run: ./scripts/check-image-versions.sh "$DASHBOARD_IMAGE_ID" "" next

@@ -3,13 +3,9 @@ WORKDIR /app
 # Build context is the repo root (see docker-compose.prod.yml) so npm ci can
 # see the root lockfile and resolve the exact tree CI tests, instead of
 # `npm install` re-resolving a fresh tree from packages/gateway/package.json
-# alone. Only the root manifests and packages/gateway's own manifest are
-# copied here: measured with npm 11.19.1 (installed below), `npm ci -w
-# packages/gateway` builds and resolves fastify 5.12.1 from the lockfile
-# fine without the sibling apps/dashboard, packages/client or packages/mcp
-# manifests present, and the gateway does not depend on either package.
-# Copying them anyway would invalidate this layer on unrelated manifest
-# edits and silently drift if a fifth workspace is added.
+# alone. Only the root manifests and this workspace's manifest are needed:
+# npm ci does not require the sibling workspace manifests (measured, see
+# CHANGELOG) and the docker-smoke job enforces the resulting versions.
 COPY package.json package-lock.json ./
 COPY packages/gateway/package.json packages/gateway/package.json
 # node:20-alpine bundles npm 10, which crashes resolving @vitest/coverage-v8's exact
