@@ -23,7 +23,7 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-audit --no-fund
 
       - name: Run linter (dashboard)
         run: npm run lint --workspace=apps/dashboard
@@ -54,7 +54,7 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-audit --no-fund
 
       # Root build covers every workspace, in particular packages/mcp: its
       # tsc run is the only compile of that package and needs packages/client
@@ -83,7 +83,7 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-audit --no-fund
 
       - name: Run tests
         run: npm test --workspaces --if-present
