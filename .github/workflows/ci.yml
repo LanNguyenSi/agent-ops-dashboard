@@ -159,8 +159,14 @@ jobs:
       # to null. Keeps the null-vs-null bug from going inert again.
       - name: Self-test the check script rejects a lockfile-absent package
         run: |
-          output="$(./scripts/check-image-versions.sh "$GATEWAY_IMAGE_ID" "" totally-nonexistent-package-xyz 2>&1)"
-          status=$?
+          # Actions runs `run:` under `bash -e`; a plain `output="$(...)"` of a
+          # command that is EXPECTED to fail would abort the step here, before
+          # the assertions below. Capture the status inside an `if` instead.
+          if output="$(./scripts/check-image-versions.sh "$GATEWAY_IMAGE_ID" "" totally-nonexistent-package-xyz 2>&1)"; then
+            status=0
+          else
+            status=$?
+          fi
           if [ "$status" -eq 0 ]; then
             echo "FAIL: check-image-versions.sh passed for a package absent from package-lock.json" >&2
             echo "$output" >&2
