@@ -87,3 +87,29 @@ jobs:
 
       - name: Run tests
         run: npm test --workspaces --if-present
+
+  docker-smoke:
+    name: Docker Smoke (images match lockfile)
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      # Builds via the compose file (root context, packages/gateway/Dockerfile)
+      # to exercise the same path deploy uses, then compares the image's
+      # resolved fastify / fast-json-stringify / fast-json-stringify-compiler
+      # versions against package-lock.json. A mismatch means the deployed
+      # tree is not the tree CI just tested.
+      - name: Build gateway image
+        run: docker compose -f docker-compose.prod.yml build gateway
+
+      - name: Check gateway image versions match package-lock.json
+        run: ./scripts/check-gateway-image-versions.sh agent-ops-dashboard-gateway
+
+      - name: Build dashboard image
+        run: docker compose -f docker-compose.prod.yml build app
+
+      - name: Check dashboard image versions match package-lock.json
+        run: ./scripts/check-gateway-image-versions.sh agent-ops-dashboard-app /app/apps/dashboard next

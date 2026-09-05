@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- The gateway and dashboard Docker images now build from the root context
+  and install with `npm ci`, so the deployed dependency tree is the tree
+  CI just tested against the root lockfile, instead of `npm install`
+  re-resolving a fresh tree from the workspace's own `package.json` (the
+  gateway's `fastify` drifted to 5.12.3 in the image while the lockfile
+  pinned 5.12.1). A new CI job (`docker-smoke`) builds both images via
+  `docker-compose.prod.yml` and runs `scripts/check-gateway-image-versions.sh`
+  to fail the build on any future drift.
+
 ### Changed
 
 - `@opentriologue/mcp` is bumped to 0.3.0 for its next publish (minor, not
