@@ -9,6 +9,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- The gateway and dashboard Docker images now build from the root context
+  and install with `npm ci`, so the deployed dependency tree is the tree
+  CI just tested against the root lockfile, instead of `npm install`
+  re-resolving a fresh tree from the workspace's own `package.json` (the
+  gateway's `fastify` drifted to 5.12.3 in the image while the lockfile
+  pinned 5.12.1). A new CI job (`docker-smoke`) builds both images via
+  `docker-compose.prod.yml` and runs `scripts/check-image-versions.sh`
+  to fail the build on any future drift.
+- `docker-compose.yml` (the default file `docker compose up -d` in the
+  README quickstart uses) is migrated to the same root-context shape as
+  `docker-compose.prod.yml`; it was left on `context: ./packages/gateway`
+  and `context: ./apps/dashboard` after the change above, so the quickstart
+  no longer built at all (`"/package-lock.json": not found`). A separate,
+  pre-existing `network traefik declared as external, but could not be
+  found` failure on a fresh machine is unrelated to this build error; the
+  README quickstart now documents the `docker network create traefik`
+  prerequisite instead.
+- The root `.dockerignore` patterns (`node_modules`, `.next`, `dist`, ...)
+  only matched the repo root, not nested workspace directories; with a
+  root build context they let a host-side `apps/dashboard/node_modules`,
+  `.next`, and `packages/*/node_modules`/`dist` (77 MB measured) into the
+  build context, where `COPY apps/dashboard apps/dashboard` copied them
+  over the tree `npm ci` / `npm run build` had just produced inside the
+  image. Recursive `**/node_modules`, `**/.next`, `**/dist`, `**/coverage`,
+  `**/*.tsbuildinfo` and `**/.env*` (with the two committed `.env.example`
+  files negated back in) bring the context down to 2.1 MB.
+- `scripts/check-gateway-image-versions.sh` is renamed to
+  `scripts/check-image-versions.sh` (it always checked both images, not
+  only the gateway's) and hardened: a package absent from
+  `package-lock.json` now fails the check with a distinct message instead
+  of silently passing (`null == null`), a package missing from the image
+  while the lockfile pins it fails with its own message, its default
+  `workdir` is read from the image itself
+  (`docker image inspect --format '{{.Config.WorkingDir}}'`) instead of
+  hardcoding the gateway's, and the lockfile lookup mirrors node's
+  resolution order (the workspace's own `node_modules` first, then the
+  hoisted root `node_modules`) instead of picking whichever matching path
+  happens to be shortest.
+- `packages/gateway/Dockerfile` and `apps/dashboard/Dockerfile` no longer
+  `COPY` the sibling workspace manifests (`packages/client`,
+  `packages/mcp`, and each other's `package.json`). The prior comment
+  claiming `npm ci` refuses to run without them was not reproduced: built
+  with npm 11.19.1 and only the root manifests plus the target workspace's
+  own `package.json`, both images still resolve the pinned versions from
+  the lockfile (gateway's `fastify` 5.12.1, dashboard's `next` 16.2.11);
+  neither workspace imports `@opentriologue/client` or
+  `@opentriologue/mcp`. Removing the unused `COPY` lines also stops the
+  `npm ci` layer from invalidating on unrelated sibling-manifest edits.
+- `docker-compose.prod.yml` (and, to match, `docker-compose.yml`) now name
+  the built images explicitly (`image: agent-ops-dashboard-gateway` /
+  `agent-ops-dashboard-app`) instead of letting compose derive them from
+  the checkout directory's basename; `container_name` is unchanged. The
+  `docker-smoke` CI job also resolves each image's id right after building
+  it and checks that id rather than the mutable tag: the id pins the
+  checked artifact to the image this step built, so a later re-tag of the
+  same name can't shift what the check inspected.
+  The names are now explicit instead of derived from the checkout
+  directory's basename, even though the derived names were already
+  identical.
+- The `docker-smoke` CI job gained a 30-minute timeout, an explicit
+  `actions/setup-node@v5` (Node 22) step for the check script's `node`
+  dependency, a build of `docker-compose.yml` (catches the regression
+  above), a boot check per image (`docker run -d`, then `curl` `/health`
+  for the gateway and `/api/health` for the dashboard, expecting 200), and
+  a negative-control step asserting `scripts/check-image-versions.sh`
+  rejects a package absent from the lockfile, so the null-vs-null bug
+  above cannot regress silently.
+
 ### Changed
 
 - `@opentriologue/mcp` is bumped to 0.3.0 for its next publish (minor, not

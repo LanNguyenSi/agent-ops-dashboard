@@ -16,6 +16,7 @@ To self-host:
 git clone https://github.com/LanNguyenSi/agent-ops-dashboard.git
 cd agent-ops-dashboard
 cp .env.example .env        # set GATEWAY_TOKEN: the gateway 503s every non-/health route until it is set
+docker network create traefik  # dashboard joins this network even in the default compose file
 docker compose up -d        # PostgreSQL + gateway (3001) + dashboard (3000)
 ```
 

@@ -16,8 +16,17 @@ services:
 
   gateway:
     build:
-      context: ./packages/gateway
-      dockerfile: Dockerfile
+      # Root context (not ./packages/gateway) so the build can COPY the root
+      # package-lock.json and install with npm ci, honoring the lockfile
+      # instead of re-resolving a fresh tree. See packages/gateway/Dockerfile.
+      context: .
+      dockerfile: packages/gateway/Dockerfile
+    # build: never pull this name, always build from the Dockerfile (the image has no registry counterpart)
+    # The tag is shared with docker-compose.prod.yml because the build inputs
+    # (this Dockerfile, the root context) are identical; give this file
+    # distinct tags if the two ever diverge.
+    image: agent-ops-dashboard-gateway
+    pull_policy: build
     ports:
       - "3001:3001"
     environment:
@@ -35,8 +44,17 @@ services:
 
   dashboard:
     build:
-      context: ./apps/dashboard
-      dockerfile: Dockerfile
+      # Root context (not ./apps/dashboard) so the build can COPY the root
+      # package-lock.json and install with npm ci, honoring the lockfile
+      # instead of re-resolving a fresh tree. See apps/dashboard/Dockerfile.
+      context: .
+      dockerfile: apps/dashboard/Dockerfile
+    # build: never pull this name, always build from the Dockerfile (the image has no registry counterpart)
+    # The tag is shared with docker-compose.prod.yml because the build inputs
+    # (this Dockerfile, the root context) are identical; give this file
+    # distinct tags if the two ever diverge.
+    image: agent-ops-dashboard-app
+    pull_policy: build
     ports:
       - "3000:3000"
     environment:
