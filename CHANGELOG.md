@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- CVE sweep 2026-09-11: bumped next 16.2.11 -> 16.3.4 (GHSA-2xp9-vwfh-vxw4,
+  GHSA-p293-qw3h-jr36, critical RCE), sharp 0.35.3 -> 0.35.4
+  (GHSA-rgj7-g3m4-5g8c), hono 4.13.0 -> 4.13.7 (GHSA-gqvv-2mrq-wpjv,
+  GHSA-g6gw-c38x-mqfc, GHSA-crvj-82cr-hjcx), vitest and @vitest/mocker
+  4.1.9 -> 4.1.11 (GHSA-82fw-gwwq-j7x9, dev-only), and js-yaml 4.3.1 ->
+  4.3.2 (GHSA-2883-xcg3-v3hh, dev-only). Lockfile-only, within-major.
 - The gateway and dashboard Docker images now build from the root context
   and install with `npm ci`, so the deployed dependency tree is the tree
   CI just tested against the root lockfile, instead of `npm install`
