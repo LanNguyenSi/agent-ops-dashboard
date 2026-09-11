@@ -19,9 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `require()`, which only resolves when `next` sits in an ancestor
   `node_modules` of wherever `eslint-config-next` itself resolves. A
   from-scratch npm lockfile regeneration (`rm package-lock.json && npm
-  install --package-lock-only`) is one way to produce that placement,
-  and is also the situation a CVE fix leaves behind between editing
-  `package.json` and running a full `npm ci`. `next` is now declared as
+  install --package-lock-only`) is one way to produce that placement.
+  `next` is now declared as
   a root `devDependency` (`^16.3.4`, matching `apps/dashboard`'s own
   range) purely to anchor its hoist target so that placement cannot be
   produced; the root package never imports it. The same regeneration
@@ -40,10 +39,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   which requires Node >=22 and warns `EBADENGINE` under this repo's Node
   20 CI job; pinning just the nested dependency lets `@octokit/request`
   itself resolve freely within its manifest range. The prior
-  `overrides.fastify` pin (`5.12.1`) is removed; nothing in this repo's
-  dependency graph currently resolves `fastify` past that version
-  without it, so the override added no constraint beyond what the
-  manifest range already produces.
+  `overrides.fastify` pin (`5.12.1`) is removed; the committed lockfile
+  already resolves `fastify` at 5.12.1 and `npm ci` reproduces that
+  exactly, so the override added no constraint the lockfile does not
+  already impose. A deliberate from-scratch resolve moves `fastify` to
+  5.12.3, inside the `^5.12.1` that `packages/gateway` declares, which
+  is the intended behaviour.
 
   Neither change widens an advisory-relevant range past what CI already
   runs, and the lockfile edit for the two anchors is limited to the root
