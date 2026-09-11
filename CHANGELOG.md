@@ -11,6 +11,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- A from-scratch npm lockfile regeneration (`rm package-lock.json && npm
+  install --package-lock-only`) could relocate `next` from the hoisted
+  root `node_modules/next` to `apps/dashboard/node_modules/next` when the
+  on-disk `node_modules` predated a `next` manifest-range bump (the exact
+  situation a CVE fix leaves behind between editing `package.json` and
+  running a full `npm ci`): `eslint-config-next`'s parser hard-requires
+  `next/dist/compiled/babel/eslint-parser` via a bare `require()`, which
+  only resolves when `next` sits in an ancestor `node_modules` of wherever
+  `eslint-config-next` itself resolves, so `npm run lint -w
+  apps/dashboard` failed with `Cannot find module
+  'next/dist/compiled/babel/eslint-parser'`. `next` is now also declared
+  as a root `devDependency` (`^16.3.4`, matching `apps/dashboard`'s own
+  range) purely to anchor its hoist target; the root package never
+  imports it. A from-scratch regeneration also surfaced two more
+  hoist-placement artifacts, fixed the same way: `@eslint/js` is now a
+  root `devDependency` (`^9.0.0`) so the phantom peer-only `eslint@9.x`
+  node that satisfies `eslint-config-next`'s bundled plugins keeps its own
+  matching `@eslint/js`, instead of colliding with the unrelated
+  `@eslint/js@10.x` gateway's real `eslint@10.x` needs (`npm ls --all`
+  reported the 9.x node `invalid` otherwise); and `overrides.fastify`
+  (`5.12.1`) and `overrides["@octokit/request"]` (`10.0.9`) pin two
+  transitive packages that a fresh resolve otherwise bumps within-range
+  as an uncontrolled side effect of any unrelated regeneration
+  (`@octokit/request` past 10.0.9 pulls `content-type@3.x`, which
+  requires Node >=22 and warns `EBADENGINE` under this repo's Node 20 CI
+  job). None of these four widen an advisory-relevant range past what CI
+  already runs; `next`, `eslint`, `fastify` and `@octokit/rest` keep their
+  currently tested versions. Verified: `rm package-lock.json && npm
+  install --package-lock-only && npm ci && npm run lint -w
+  apps/dashboard` now exits 0 on a clean extract, under npm 10.8.2 (node
+  20.20.2) and npm 10.9.8 (node 22.23.2); `npm ls --all` exits 0 with 0
+  invalid/missing on both.
 - CVE sweep 2026-09-11: bumped next 16.2.11 -> 16.3.4 (GHSA-2xp9-vwfh-vxw4,
   GHSA-p293-qw3h-jr36, critical RCE), sharp 0.35.3 -> 0.35.4
   (GHSA-rgj7-g3m4-5g8c), hono 4.13.0 -> 4.13.7 (GHSA-gqvv-2mrq-wpjv,
