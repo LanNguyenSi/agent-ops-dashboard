@@ -103,6 +103,22 @@ agent-ops-dashboard/          # npm workspaces monorepo
 
 See [docs/architecture.md](docs/architecture.md) for the full breakdown.
 
+## Dependency notes
+
+The root `package.json` declares `next` and `@eslint/js` as `devDependencies`
+even though the root package never imports either. Both are hoist anchors,
+not runtime or lint dependencies of the root: `npm`'s workspace hoisting
+algorithm picks where in the `node_modules` tree a package lands based on
+what depends on it, and without an anchor at the root, a from-scratch lockfile
+resolution can place `next` under `apps/dashboard/node_modules/next` instead
+of the hoisted root `node_modules/next`, which breaks `eslint-config-next`'s
+bare `require('next/dist/compiled/babel/eslint-parser')` (see the
+[Unreleased] entry in [CHANGELOG.md](CHANGELOG.md) for the failure mode and
+verification). The `overrides["@octokit/request"]` entry pins only the
+nested `content-type` dependency to `^2`, not the whole package, because
+`@octokit/request` versions past 10.0.9 pull `content-type@3.x`, which
+requires Node >= 22 and trips `EBADENGINE` under this repo's Node 20 CI leg.
+
 ## Related
 
 - **[depsight](https://github.com/LanNguyenSi/depsight)**: deep CVE, license, and dependency-health scanning for a single repo or team; complements this dashboard's multi-repo operational view.

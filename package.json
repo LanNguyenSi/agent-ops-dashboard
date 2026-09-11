@@ -22,8 +22,9 @@
     "next": {
       "postcss": "^8.5.18"
     },
-    "fastify": "5.12.1",
-    "@octokit/request": "10.0.9"
+    "@octokit/request": {
+      "content-type": "^2"
+    }
   },
   "devDependencies": {
     "next": "^16.3.4",
