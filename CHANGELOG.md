@@ -11,6 +11,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Any lockfile resolution that places `next` under
+  `apps/dashboard/node_modules/next` instead of the hoisted root
+  `node_modules/next` breaks `npm run lint -w apps/dashboard` with
+  `Cannot find module 'next/dist/compiled/babel/eslint-parser'`, because
+  `eslint-config-next`'s parser hard-requires that path via a bare
+  `require()`, which only resolves when `next` sits in an ancestor
+  `node_modules` of wherever `eslint-config-next` itself resolves. A
+  from-scratch npm lockfile regeneration (`rm package-lock.json && npm
+  install --package-lock-only`) is one way to produce that placement.
+  `next` is now declared as
+  a root `devDependency` (`^16.3.4`, matching `apps/dashboard`'s own
+  range) purely to anchor its hoist target so that placement cannot be
+  produced; the root package never imports it. The same regeneration
+  also surfaced one more hoist-placement artifact, fixed the same way:
+  `@eslint/js` is now a root `devDependency` (`^9.0.0`) so the phantom
+  peer-only `eslint@9.x` node that satisfies `eslint-config-next`'s
+  bundled plugins keeps its own matching `@eslint/js`, instead of
+  colliding with the unrelated gateway's real `eslint@10.x` and its
+  `@eslint/js@10.x` (`npm ls --all` reported the 9.x node `invalid`
+  otherwise). These two root `devDependency` anchors are also documented
+  in [README.md](README.md#dependency-notes).
+
+  The `overrides["@octokit/request"]` entry is narrowed to the nested
+  `content-type` dependency only (`{ "content-type": "^2" }`), not the
+  whole package: `@octokit/request` past 10.0.9 pulls `content-type@3.x`,
+  which requires Node >=22 and warns `EBADENGINE` under this repo's Node
+  20 CI job; pinning just the nested dependency lets `@octokit/request`
+  itself resolve freely within its manifest range. The prior
+  `overrides.fastify` pin (`5.12.1`) is removed; the committed lockfile
+  already resolves `fastify` at 5.12.1 and `npm ci` reproduces that
+  exactly, so the override added no constraint the lockfile does not
+  already impose. A deliberate from-scratch resolve moves `fastify` to
+  5.12.3, inside the `^5.12.1` that `packages/gateway` declares, which
+  is the intended behaviour.
+
+  Neither change widens an advisory-relevant range past what CI already
+  runs, and the lockfile edit for the two anchors is limited to the root
+  package entry (`packages[""].devDependencies`); no other package
+  record moves, is added, or is removed relative to the lockfile before
+  this change. Verified on clean extracts, under npm 10.8.2 (node
+  20.20.2) and npm 10.9.8 (node 22.23.2): `npm ci --dry-run`, `npm ci`,
+  `npm ls --all`, a no-op `npm install --package-lock-only`, and
+  `npm audit --audit-level=high` all exit 0 (0 invalid/missing, 0
+  vulnerabilities), `npm run lint -w apps/dashboard` exits 0, and a
+  from-scratch `rm package-lock.json && npm install --package-lock-only
+  && npm ci && npm run lint -w apps/dashboard` also exits 0 with 0
+  `EBADENGINE` warnings.
 - CVE sweep 2026-09-11: bumped next 16.2.11 -> 16.3.4 (GHSA-2xp9-vwfh-vxw4,
   GHSA-p293-qw3h-jr36, critical RCE), sharp 0.35.3 -> 0.35.4
   (GHSA-rgj7-g3m4-5g8c), hono 4.13.0 -> 4.13.7 (GHSA-gqvv-2mrq-wpjv,
