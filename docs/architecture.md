@@ -2,6 +2,8 @@
 
 agent-ops-dashboard is an npm-workspaces monorepo with two deployable units, a managed PostgreSQL instance, and an external GitHub integration.
 
+Stack: Next.js 16, TypeScript, Tailwind CSS, Recharts and Octokit (dashboard); Fastify (gateway); PostgreSQL.
+
 ```
 agent-ops-dashboard/
 ├── apps/
@@ -77,3 +79,15 @@ Production runs three containers under `docker-compose.prod.yml`:
 - The dashboard container, port `3000`, attached to the external `traefik` network with Traefik labels for `Host(\`ops.opentriologue.ai\`)` and Let's Encrypt TLS.
 
 Migrations run automatically on gateway startup; there is no separate migrate step. See [configuration.md](configuration.md) for the env vars each container needs.
+
+## Feature status
+
+| Feature | Status | Notes |
+|---|---|---|
+| Agent Registry | Live | Register, heartbeat, auto-offline after 60s |
+| Activity Feed | Live | SSE stream with `Last-Event-ID` replay |
+| Shared State Store | Live | Namespaced KV with atomic CAS |
+| GitHub Repo Health | Live | All owner repos, CI status, filtering, sorting |
+| Alerts | Live | Alert rules with severity levels and status |
+| Pipeline Monitoring | Live | Workflow runs, stats, trends, cross-repo analytics |
+| MCP Integration | Live | See [packages/mcp/](../packages/mcp/README.md) (published as `@opentriologue/mcp`) |

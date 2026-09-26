@@ -6,11 +6,20 @@ agent-ops-dashboard is a Next.js + Fastify monorepo that gives AI agents (Claude
 
 ![agent-ops-dashboard Delivery Health view: per-repository cards across the fleet, each showing CI status, open-PR count, and vulnerability count.](docs/img/dashboard.png)
 
-## Try it in 60 seconds
+## Packages
+
+| Package | Purpose | Docs |
+|---|---|---|
+| [apps/dashboard](apps/dashboard) | Next.js frontend: agent view, GitHub repo health, pipeline analytics | this README, [docs/architecture.md](docs/architecture.md) |
+| [packages/gateway](packages/gateway) | Fastify REST API + SSE: agent registry, shared state store, activity feed | [docs/api.md](docs/api.md), [docs/architecture.md](docs/architecture.md) |
+| [packages/client](packages/client) | `@opentriologue/client`: CLI + SDK for the gateway | [packages/client/README.md](packages/client/README.md) |
+| [packages/mcp](packages/mcp) | `@opentriologue/mcp`: MCP server so AI agents (Claude Code and others) can call the gateway directly | [packages/mcp/README.md](packages/mcp/README.md) |
+
+## Quick start
 
 The hosted dashboard is live at **[ops.opentriologue.ai](https://ops.opentriologue.ai)**: register an agent, push a heartbeat, or stream the activity feed without installing anything.
 
-To self-host:
+To self-host (prerequisites: Docker with Compose v2 for the container path; Node.js 20+ and npm for the dev loop):
 
 ```bash
 git clone https://github.com/LanNguyenSi/agent-ops-dashboard.git
@@ -31,7 +40,7 @@ npm run dev:gateway              # gateway on :3001
 
 The gateway requires a Bearer token: every route except `/health` returns `503` when `GATEWAY_TOKEN` is unset and `401` when a request omits `Authorization: Bearer <GATEWAY_TOKEN>`.
 
-## What it looks like
+## Usage
 
 Register an agent against the live gateway:
 
@@ -51,57 +60,17 @@ $ curl -sX POST https://ops.opentriologue.ai/gateway/agents/register \
 }
 ```
 
-Subscribe to the activity feed and watch heartbeats and state changes flow in:
+More endpoints (state store, activity feed, GitHub repo health), including the SSE event-stream example, are in [docs/api.md](docs/api.md).
 
-```bash
-$ curl -N -H "Authorization: Bearer $GATEWAY_TOKEN" https://ops.opentriologue.ai/gateway/api/events/stream
-
-id: 4821
-event: agent.heartbeat
-data: {"id":4821,"agentId":"8a7c1f1e-...","eventType":"agent.heartbeat","payload":{"status":"online"},"createdAt":"2026-04-28T12:00:30.000Z"}
-```
-
-Reconnects send `Last-Event-ID` and replay missed events from the `agent_events` log; nothing in flight is lost.
-
-## Next steps
+## Documentation
 
 | If you want to... | Read |
 |---|---|
 | Call the gateway and dashboard APIs (registry, state CAS, events, repo health) | [docs/api.md](docs/api.md) |
-| Understand the components, SSE design, and GitHub integration | [docs/architecture.md](docs/architecture.md) |
+| Understand the components, SSE design, GitHub integration, and feature status | [docs/architecture.md](docs/architecture.md) |
 | Configure env vars, GitHub tokens, and deployment | [docs/configuration.md](docs/configuration.md) |
 
-## Other ways in
-
-- **MCP server** ([packages/mcp/](packages/mcp/README.md), published as `@opentriologue/mcp`): lets AI agents talk to the gateway directly via 9 tools (`ops_register`, `ops_heartbeat`, `ops_state_cas`, ...). Drop it into Claude Code and your agent shows up in the dashboard automatically.
-- **API docs**: full REST surface in [docs/](docs/) for hand-rolled clients.
-- **Hosted demo**: [ops.opentriologue.ai](https://ops.opentriologue.ai) runs the latest `master`; useful as a sandbox before standing up your own.
-
-## Features
-
-| Feature | Status | Notes |
-|---|---|---|
-| Agent Registry | Live | Register, heartbeat, auto-offline after 60s |
-| Activity Feed | Live | SSE stream with `Last-Event-ID` replay |
-| Shared State Store | Live | Namespaced KV with atomic CAS |
-| GitHub Repo Health | Live | All owner repos, CI status, filtering, sorting |
-| Alerts | Live | Alert rules with severity levels and status |
-| Pipeline Monitoring | Live | Workflow runs, stats, trends, cross-repo analytics |
-| MCP Integration | Live | See [packages/mcp/](packages/mcp/README.md) (published as `@opentriologue/mcp`) |
-
-## Architecture
-
-```
-agent-ops-dashboard/          # npm workspaces monorepo
-├── apps/
-│   └── dashboard/            # Next.js frontend (ops.opentriologue.ai)
-└── packages/
-    ├── gateway/              # Fastify REST API + SSE + State Store (port 3001)
-    ├── client/               # @opentriologue/client CLI + SDK
-    └── mcp/                  # @opentriologue/mcp, MCP server for AI agents
-```
-
-See [docs/architecture.md](docs/architecture.md) for the full breakdown.
+See also: [depsight](https://github.com/LanNguyenSi/depsight) (deep CVE/license/dependency scanning for a single repo, complements this dashboard's multi-repo view) and [repo-dashboard](https://github.com/LanNguyenSi/repo-dashboard) (lightweight CLI alternative).
 
 ## Dependency notes
 
@@ -119,15 +88,19 @@ nested `content-type` dependency to `^2`, not the whole package, because
 `@octokit/request` versions past 10.0.9 pull `content-type@3.x`, which
 requires Node >= 22 and trips `EBADENGINE` under this repo's Node 20 CI leg.
 
-## Related
+## Development
 
-- **[depsight](https://github.com/LanNguyenSi/depsight)**: deep CVE, license, and dependency-health scanning for a single repo or team; complements this dashboard's multi-repo operational view.
-- **[repo-dashboard](https://github.com/LanNguyenSi/repo-dashboard)**: lightweight CLI alternative; `repo-dash LanNguyenSi` for a quick terminal overview of repos, PRs, and CI status.
+```bash
+npm install
+npm test              # or: npm run test --workspaces --if-present
+npm run lint --workspace=apps/dashboard
+npm run lint --workspace=packages/gateway
+npm run typecheck --workspace=packages/gateway
+npm run build
+```
 
-## Built with
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the PR workflow and issue guidelines.
 
-Next.js, TypeScript, Tailwind CSS, Fastify, PostgreSQL, Recharts, Octokit.
+## License
 
----
-
-Built by [Ice](https://github.com/LanNguyenSi) + [Lava](https://github.com/lavaclawdbot): two AI agents, one dashboard.
+MIT, see [LICENSE](LICENSE).
