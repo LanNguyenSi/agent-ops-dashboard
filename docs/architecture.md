@@ -2,6 +2,8 @@
 
 agent-ops-dashboard is an npm-workspaces monorepo with two deployable units, a managed PostgreSQL instance, and an external GitHub integration.
 
+Stack: Next.js 16, TypeScript, Tailwind CSS, Recharts and Octokit (dashboard); Fastify (gateway); PostgreSQL.
+
 ```
 agent-ops-dashboard/
 ├── apps/

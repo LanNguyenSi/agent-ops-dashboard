@@ -6,11 +6,20 @@ agent-ops-dashboard is a Next.js + Fastify monorepo that gives AI agents (Claude
 
 ![agent-ops-dashboard Delivery Health view: per-repository cards across the fleet, each showing CI status, open-PR count, and vulnerability count.](docs/img/dashboard.png)
 
+## Packages
+
+| Package | Purpose | Docs |
+|---|---|---|
+| [apps/dashboard](apps/dashboard) | Next.js frontend: agent view, GitHub repo health, pipeline analytics | this README, [docs/architecture.md](docs/architecture.md) |
+| [packages/gateway](packages/gateway) | Fastify REST API + SSE: agent registry, shared state store, activity feed | [docs/api.md](docs/api.md), [docs/architecture.md](docs/architecture.md) |
+| [packages/client](packages/client) | `@opentriologue/client`: CLI + SDK for the gateway | [packages/client/README.md](packages/client/README.md) |
+| [packages/mcp](packages/mcp) | `@opentriologue/mcp`: MCP server so AI agents (Claude Code and others) can call the gateway directly | [packages/mcp/README.md](packages/mcp/README.md) |
+
 ## Quick start
 
 The hosted dashboard is live at **[ops.opentriologue.ai](https://ops.opentriologue.ai)**: register an agent, push a heartbeat, or stream the activity feed without installing anything.
 
-To self-host:
+To self-host (prerequisites: Docker with Compose v2 for the container path; Node.js 20+ and npm for the dev loop):
 
 ```bash
 git clone https://github.com/LanNguyenSi/agent-ops-dashboard.git
@@ -53,21 +62,12 @@ $ curl -sX POST https://ops.opentriologue.ai/gateway/agents/register \
 
 More endpoints (state store, activity feed, GitHub repo health), including the SSE event-stream example, are in [docs/api.md](docs/api.md).
 
-## Packages
-
-| Package | Purpose | Docs |
-|---|---|---|
-| [apps/dashboard](apps/dashboard) | Next.js frontend: agent view, GitHub repo health, pipeline analytics | this README, [docs/architecture.md](docs/architecture.md) |
-| [packages/gateway](packages/gateway) | Fastify REST API + SSE: agent registry, shared state store, activity feed | [docs/api.md](docs/api.md), [docs/architecture.md](docs/architecture.md) |
-| [packages/client](packages/client) | `@opentriologue/client`: CLI + SDK for the gateway | [packages/client/README.md](packages/client/README.md) |
-| [packages/mcp](packages/mcp) | `@opentriologue/mcp`: MCP server so AI agents (Claude Code, and others) can call the gateway directly | [packages/mcp/README.md](packages/mcp/README.md) |
-
 ## Documentation
 
 | If you want to... | Read |
 |---|---|
 | Call the gateway and dashboard APIs (registry, state CAS, events, repo health) | [docs/api.md](docs/api.md) |
-| Understand the components, SSE design, and GitHub integration | [docs/architecture.md](docs/architecture.md) |
+| Understand the components, SSE design, GitHub integration, and feature status | [docs/architecture.md](docs/architecture.md) |
 | Configure env vars, GitHub tokens, and deployment | [docs/configuration.md](docs/configuration.md) |
 
 See also: [depsight](https://github.com/LanNguyenSi/depsight) (deep CVE/license/dependency scanning for a single repo, complements this dashboard's multi-repo view) and [repo-dashboard](https://github.com/LanNguyenSi/repo-dashboard) (lightweight CLI alternative).
@@ -93,8 +93,10 @@ requires Node >= 22 and trips `EBADENGINE` under this repo's Node 20 CI leg.
 ```bash
 npm install
 npm test              # or: npm run test --workspaces --if-present
-make lint             # lint + type-check
-make ci               # format-check, lint, test, build
+npm run lint --workspace=apps/dashboard
+npm run lint --workspace=packages/gateway
+npm run typecheck --workspace=packages/gateway
+npm run build
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the PR workflow and issue guidelines.
