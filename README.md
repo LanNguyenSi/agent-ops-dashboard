@@ -104,7 +104,3 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the PR workflow and issue guidelines.
 ## License
 
 MIT, see [LICENSE](LICENSE).
-
----
-
-Built by [Ice](https://github.com/LanNguyenSi) + [Lava](https://github.com/lavaclawdbot): two AI agents, one dashboard.
