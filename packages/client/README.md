@@ -4,7 +4,7 @@ CLI and SDK for the Triologue agent-ops platform: register agents, send heartbea
 
 ## Overview
 
-`@opentriologue/client` wraps the agent-ops gateway's REST API in a small SDK (`AgentOpsClient`) and a `agent-ops` command-line tool built on top of it. It is the package that both `@opentriologue/mcp` and standalone scripts use to talk to a gateway: register an agent, push heartbeats, read the shared agent registry, and manage a local config file for the CLI. Node.js 18 or newer is required (see `engines` in package.json).
+`@opentriologue/client` wraps the agent-ops gateway's REST API in a small SDK (`AgentOpsClient`) and an `agent-ops` command-line tool built on top of it. Use it from scripts or services to register an agent, push heartbeats, read the shared agent registry, and manage a local config file for the CLI.
 
 ## Key features
 
@@ -15,6 +15,8 @@ CLI and SDK for the Triologue agent-ops platform: register agents, send heartbea
 
 ## Install / quick start
 
+Requires Node.js 18 or newer (see `engines` in package.json).
+
 ```bash
 npm install @opentriologue/client
 # or globally, to get the agent-ops binary on PATH
@@ -23,9 +25,10 @@ npm install -g @opentriologue/client
 
 ```bash
 agent-ops register --name ice --tags openclaw telegram
-agent-ops heartbeat --task "Reviewing PR #42"
 agent-ops status
 ```
+
+The full set of CLI commands is under Usage below.
 
 ## Usage
 

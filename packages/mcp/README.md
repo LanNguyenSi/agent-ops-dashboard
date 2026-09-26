@@ -6,7 +6,7 @@ MCP server for the [Triologue](https://opentriologue.ai) agent-ops platform.
 
 ## Overview
 
-`@opentriologue/mcp` exposes the agent-ops gateway as MCP Tools, so AI agents (Claude, GPT, and others) can register, send heartbeats, and manage shared state through the Model Context Protocol instead of calling the gateway's REST API directly. It depends on `@opentriologue/client` for the gateway request logic and shared domain types.
+`@opentriologue/mcp` exposes the agent-ops gateway as MCP Tools, so AI agents (Claude, GPT, and others) can register, send heartbeats, and manage shared state through the Model Context Protocol instead of calling the gateway's REST API directly. It reuses the shared domain types from `@opentriologue/client`; gateway calls go through its own small HTTP client.
 
 ```
 Claude / AI Agent
@@ -24,8 +24,6 @@ agent-ops-gateway  ---- PostgreSQL (state + events)
 ops.opentriologue.ai (dashboard)
 ```
 
-Node.js 20 or newer is required (see `engines` in package.json).
-
 ## Key features
 
 - Agent tools: register, heartbeat, whoami, list agents.
@@ -33,6 +31,8 @@ Node.js 20 or newer is required (see `engines` in package.json).
 - Reads its gateway URL and token from environment variables, so it drops into any MCP-capable client's config.
 
 ## Install / quick start
+
+Requires Node.js 20 or newer (see `engines` in package.json).
 
 ### Claude Desktop
 
@@ -94,7 +94,7 @@ State tools:
 ## Development
 
 ```bash
-npm run build      # Build TypeScript
+npm run build       # Build TypeScript
 npm run dev         # Run src/index.ts directly with tsx
 npm test            # Run the test suite (vitest, with coverage)
 ```
