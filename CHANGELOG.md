@@ -26,8 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   from-scratch npm lockfile regeneration (`rm package-lock.json && npm
   install --package-lock-only`) is one way to produce that placement.
   `next` is now declared as
-  a root `devDependency` (`^16.3.4`, matching `apps/dashboard`'s own
-  range) purely to anchor its hoist target so that placement cannot be
+  a root `devDependency` (the same range as `apps/dashboard`'s own
+  declaration) purely to anchor its hoist target so that placement cannot be
   produced; the root package never imports it. The same regeneration
   also surfaced one more hoist-placement artifact, fixed the same way:
   `@eslint/js` is now a root `devDependency` (`^9.0.0`) so the phantom
@@ -48,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   already resolves `fastify` at 5.12.1 and `npm ci` reproduces that
   exactly, so the override added no constraint the lockfile does not
   already impose. A deliberate from-scratch resolve moves `fastify` to
-  5.12.3, inside the `^5.12.1` that `packages/gateway` declares, which
+  a newer 5.12.x, inside the range that `packages/gateway` declares, which
   is the intended behaviour.
 
   Neither change widens an advisory-relevant range past what CI already
