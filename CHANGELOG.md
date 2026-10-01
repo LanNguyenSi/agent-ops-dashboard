@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Security
+
+- Bumped axios 1.18.1 to 1.20.0 (the `@opentriologue/client` floor is now `^1.20.0`) for the advisories published 2026-09-30 against axios < 1.20.0 (for example GHSA-r4gj-5m52-g5wh).
+
 ### Fixed
 
 - Any lockfile resolution that places `next` under
