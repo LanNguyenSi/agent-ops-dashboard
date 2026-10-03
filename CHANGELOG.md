@@ -160,7 +160,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `packages/mcp` is already gone; the remaining nested entries there are
   uniform (every workspace pins vitest 4.1.9 and npm gives each its own
   nested copy), functional, not a version conflict.
-- CI: `release.yml` now passes step values (release version, matrix entries, image tags) into `run:` scripts through `env:` and shell variables instead of interpolating `${{ }}` expressions into the script text. No behavior change for normal tags and versions.
+- CI: `release.yml` now passes step values into `run:` scripts through `env:` and shell variables instead of interpolating `${{ }}` expressions into the script text. No behavior change for normal tags and versions.
 
 ## [0.3.2] - 2026-06-16
 
