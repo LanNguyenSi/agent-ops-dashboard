@@ -140,6 +140,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Publish workflows now install npm with `npm install -g npm@^11.5.1` (the documented trusted-publishing floor) instead of the floating `npm@11`. CI only; no package code change.
+
 - `@opentriologue/mcp` is bumped to 0.3.0 for its next publish (minor, not
   patch): the zod `^3` to `^4` migration (PR #75) changes the advertised
   tool schemas in the published artifact. SDK 1.29+ (currently pinned
