@@ -19,7 +19,7 @@ Both the gateway and the dashboard read configuration from environment variables
 | Variable | Default | Description |
 |---|---|---|
 | `PORT` | `3000` | HTTP port |
-| `GATEWAY_INTERNAL_URL` | `http://gateway:3001` (compose) | Server-side gateway URL used by Next.js API routes |
+| `GATEWAY_INTERNAL_URL` | `http://agent-ops-gateway:3001` | Server-side gateway URL used by Next.js API routes |
 | `GATEWAY_TOKEN` | (none) | Bearer token the dashboard attaches to its server-side gateway calls. Must match the gateway's `GATEWAY_TOKEN`, otherwise the `/api/gateway/*` proxies get `401`/`503`. |
 | `GITHUB_TOKEN` | (required for repo health) | GitHub Personal Access Token, scopes `repo` and `actions:read` |
 | `GITHUB_OWNER` | `LanNguyenSi` | Default GitHub user/org for the repo-health dashboard |
@@ -63,7 +63,7 @@ DATABASE_URL=postgresql://dev:dev@localhost:5432/app_dev npm run dev:gateway
 
 ## Deployment
 
-Production uses `docker-compose.prod.yml` with three services (postgres, gateway, dashboard) and a Traefik label set that exposes the dashboard on `ops.opentriologue.ai` with Let's Encrypt TLS.
+Production uses `docker-compose.prod.yml` with two services (gateway, dashboard) and a Traefik label set that exposes the dashboard on `ops.opentriologue.ai` with Let's Encrypt TLS. It has no Postgres service and sets no `DATABASE_URL`, so the gateway runs in memory-only mode (state store and persistent event log disabled) unless you supply `DATABASE_URL` yourself, for example in `.env`. For the Postgres-backed setup use the default `docker-compose.yml`.
 
 The Makefile wraps the common deploy commands:
 
@@ -76,7 +76,7 @@ make health              # curl /api/health
 
 Notes:
 
-- The gateway runs database migrations automatically on startup via `runMigrations()`. There is no separate migration step.
+- When `DATABASE_URL` is set, the gateway runs database migrations automatically on startup via `runMigrations()`. There is no separate migration step.
 - The `gateway_data` named volume holds `agent-registry.json` so the agent list survives gateway restarts; agents are reloaded as `offline` and must heartbeat to come back online.
 - The `traefik` external network must already exist on the host before `docker compose up`.
-- The dashboard container reaches the gateway server-side via `GATEWAY_INTERNAL_URL` (in compose, `http://gateway:3001`) and authenticates with `GATEWAY_TOKEN`. Browser clients use the dashboard's own `/api/gateway/*` proxies, so no public gateway URL needs to reach the browser.
+- The dashboard container reaches the gateway server-side via `GATEWAY_INTERNAL_URL` (default `http://agent-ops-gateway:3001`, the gateway's `container_name`) and authenticates with `GATEWAY_TOKEN`. Browser clients use the dashboard's own `/api/gateway/*` proxies, so no public gateway URL needs to reach the browser.
