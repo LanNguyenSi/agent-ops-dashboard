@@ -63,7 +63,7 @@ Subscribers are per-request closures registered with `eventService.subscribe({ m
 
 `apps/dashboard/lib` wraps Octokit with a small caching layer. The repo-health pipeline:
 
-1. List repos for the configured owner with `GET /users/{owner}/repos`.
+1. List the token's repos with `GET /user/repos`, filtered to the configured owner; fall back to `GET /users/{owner}/repos` (public repos only) when that fails or returns nothing.
 2. For each repo, fetch the latest workflow run on `default_branch`, the open-PR count, and (best-effort) Dependabot alert summary.
 3. Apply the request's `filter`, `language`, `sort`, and `order` selectors, then paginate.
 4. Cache the merged result for 5 minutes keyed by the request's filter/sort signature; `meta.cache` reports `hit`, `miss`, or `stale`.

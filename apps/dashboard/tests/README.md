@@ -55,7 +55,7 @@ Verify API boundaries remain stable:
 
 ## Notes
 
-The integration e2e tests probe `/api/health` on a running Next.js server and skip themselves when none is reachable, so `npm test` passes without one but then does not exercise them. To run them, start the dev server:
+The integration and contract tests probe `/api/health` on a running Next.js server and skip themselves when none is reachable, so `npm test` passes without one but then does not exercise them. To run them, start the dev server:
 ```bash
 npm run dev
 ```
