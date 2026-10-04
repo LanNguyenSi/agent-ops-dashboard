@@ -22,7 +22,7 @@ import type { Config } from "../config.js";
  * SDK's schema converter (`zod-json-schema-compat.js`, `zod/v4-mini`
  * `toJSONSchema`) no longer emits `additionalProperties: false`, and
  * `z.record` schemas gain `propertyNames`. See task e64595ed and the
- * CHANGELOG [Unreleased] entry for the zod-4 schema delta. tsc alone cannot
+ * CHANGELOG [0.3.3] entry for the zod-4 schema delta. tsc alone cannot
  * catch this kind of drift — a JSON Schema shape change is not a type
  * error — so the `tools/list` output itself is pinned below.
  */
@@ -90,7 +90,7 @@ describe("packages/mcp real McpServer runtime (no SDK mocks)", () => {
       $schema: "http://json-schema.org/draft-07/schema#",
     });
 
-    // Known zod-4 delta (CHANGELOG [Unreleased], reviewer finding on PR
+    // Known zod-4 delta (CHANGELOG [0.3.3], reviewer finding on PR
     // #75): the object schema no longer advertises `additionalProperties:
     // false` or a top-level `required` list here. Pinning the *absence*
     // explicitly so a future SDK/zod bump that changes this again fails

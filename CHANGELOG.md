@@ -9,13 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-10-04
+
+Security and deploy-hardening patch: advisory fixes across the dependency tree, Docker images built from the root lockfile, and CI/publish workflow hardening. No breaking changes.
+
 ### Security
 
+- Lockfile advisory fixes since 0.3.2 (CVE sweeps 2026-08-04 through 2026-09-30): ip-address 10.4.0 to 10.7.2 (GHSA-2vr4-cq9g-pvrc, GHSA-rpw4-54j3-4h4q; the `ip-address` override floor is now `^10.7.2`), undici 7.29.0 to 7.30.0 (GHSA-3wwx-pv8p-q78v, dev-only), qs 6.16.0 (GHSA-x5fp-wj9c-mxmx, GHSA-4mjr-xmp4-gh2g), fast-uri 3.1.8 and 4.1.5 (GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc, GHSA-fph4-wmhf-6fwf, GHSA-jqff-g426-hqxp, GHSA-hrr3-gc8f-f4qj), brace-expansion 1.1.21 and 5.0.12 (GHSA-q2hr-2g5m-vwhr, GHSA-qhr7-859c-m2p7, GHSA-6j4f-fj2g-mc7p), plus fastify 5.12.1 in `packages/gateway` (GHSA-3m5p-2c4r-xxw2, GHSA-w2qp-rph6-63g4) and in-range fixes for the browserslist chain, postcss-selector-parser and deepmerge-ts.
+- A new `audit.yml` workflow runs an `npm audit` regression gate on pull requests and distinguishes an audit-endpoint outage from real findings.
 - Bumped axios 1.18.1 to 1.20.0 (the `@opentriologue/client` floor is now `^1.20.0`) for the advisories published 2026-09-30 against axios < 1.20.0 (for example GHSA-r4gj-5m52-g5wh).
 - Bumped next 16.3.4 to 16.3.6 (GHSA-vcvr-r3jv-pc5j, critical RCE in `next/og`; the `next` floor in the root `devDependencies` and `apps/dashboard` is now `^16.3.6`) and fastify 5.12.1 to 5.12.5 (GHSA-4mh8-r7rc-xpvc, plus the high advisories GHSA-667r-xxjv-c9mm, GHSA-p68q-wchp-6fh7, GHSA-hwr6-493r-vm6h and GHSA-9q9j-q6p8-xq58 fixed in 5.12.2; the `packages/gateway` floor is now `^5.12.5`), published 2026-09-30. Lockfile records hand-applied (version, resolved, integrity from the registry) for `next`, its pinned `@next/env` and `@next/swc-*` siblings, and `fastify`; no package moved or was added.
 
 ### Fixed
 
+- The gateway's SSE event union now lists all six events it broadcasts on `/events` (the previously missing `agent:deleted` and `agent:command` included), and the registry's `emit` and the broadcast frames are typed against it, so an unlisted event name fails `tsc`.
+- The gateway build no longer ships compiled tests in `dist/` (`tsconfig.build.json` excludes `__tests__`), which also keeps them out of the Docker image.
+- The dashboard `PipelineChart` tooltip label formatter is narrowed so `next build` compiles against recharts 3.10 and later.
+- Deploy: the `.relay.yml` `pre_update` hook no longer rebuilds the old checkout with `--no-cache` before the pull, and both the gateway and dashboard image stages install npm 11 first (the bundled npm 10 crashes resolving the `@vitest/coverage-v8` peer pin); the dashboard image also drops `--legacy-peer-deps`, which dropped the `@testing-library/dom` peer.
 - Any lockfile resolution that places `next` under
   `apps/dashboard/node_modules/next` instead of the hoisted root
   `node_modules/next` breaks `npm run lint -w apps/dashboard` with
