@@ -1,4 +1,4 @@
-.PHONY: install hooks dev dev-docker docker-up docker-down build test lint format ci clean deploy deploy-pull logs health help
+.PHONY: install dev dev-docker docker-up docker-down build test lint ci clean deploy deploy-pull logs health help
 
 # Default target
 .DEFAULT_GOAL := help
@@ -11,11 +11,6 @@ help: ## Show this help message
 
 install: ## Install dependencies
 	npm ci
-
-hooks: ## Set up Git pre-commit hooks (Husky + lint-staged)
-	npx husky init
-	cp .husky-pre-commit .husky/pre-commit
-	chmod +x .husky/pre-commit
 
 dev: ## Start development server (local)
 	npm run dev
@@ -34,17 +29,14 @@ build: ## Build for production
 test: ## Run tests
 	npm test
 
-lint: ## Run linting and type-checking
-	npm run lint
-	npm run type-check
+lint: ## Run linting and type-checking (same commands as CI)
+	npm run lint --workspace=apps/dashboard
+	npm run lint --workspace=packages/gateway
+	cd apps/dashboard && npx tsc --noEmit
+	npm run typecheck --workspace=packages/gateway
 
-format: ## Format code
-	npm run format
-
-format-check: ## Check code formatting
-	npm run format:check
-
-ci: format-check lint test build ## Run all CI checks (format, lint, test, build)
+ci: lint test ## Run the CI checks (lint, type-check, test, build)
+	GITHUB_TOKEN=mock_token_for_build GITHUB_REPOS=mock/repo npm run build
 
 clean: ## Remove build artifacts and dependencies
 	rm -rf node_modules .next dist build coverage

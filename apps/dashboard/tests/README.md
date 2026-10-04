@@ -55,7 +55,7 @@ Verify API boundaries remain stable:
 
 ## Notes
 
-These tests require the Next.js dev server running:
+The integration e2e tests probe `/api/health` on a running Next.js server and skip themselves when none is reachable, so `npm test` passes without one but then does not exercise them. To run them, start the dev server:
 ```bash
 npm run dev
 ```
@@ -63,6 +63,11 @@ npm run dev
 Then run tests in another terminal:
 ```bash
 npm test
+```
+
+The server is expected at `http://localhost:3000`. Set `E2E_BASE_URL` to point the tests at a different base URL (see `tests/integration/_e2e-helpers.ts`):
+```bash
+E2E_BASE_URL=http://localhost:3100 npm test
 ```
 
 For MVP, these tests provide basic coverage. Expand as needed for production.

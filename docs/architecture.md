@@ -63,7 +63,7 @@ Subscribers are per-request closures registered with `eventService.subscribe({ m
 
 `apps/dashboard/lib` wraps Octokit with a small caching layer. The repo-health pipeline:
 
-1. List repos for the configured owner with `GET /users/{owner}/repos` (or `/orgs/{owner}/repos`).
+1. List repos for the configured owner with `GET /users/{owner}/repos`.
 2. For each repo, fetch the latest workflow run on `default_branch`, the open-PR count, and (best-effort) Dependabot alert summary.
 3. Apply the request's `filter`, `language`, `sort`, and `order` selectors, then paginate.
 4. Cache the merged result for 5 minutes keyed by the request's filter/sort signature; `meta.cache` reports `hit`, `miss`, or `stale`.
@@ -72,13 +72,12 @@ Errors from individual repos (e.g. forks where Dependabot is unavailable) are co
 
 ## Deployment
 
-Production runs three containers under `docker-compose.prod.yml`:
+`docker-compose.prod.yml` defines two services and no database:
 
-- `postgres:16-alpine` with a named volume for data.
-- The gateway container, port `3001` exposed inside the compose network.
-- The dashboard container, port `3000`, attached to the external `traefik` network with Traefik labels for `Host(\`ops.opentriologue.ai\`)` and Let's Encrypt TLS.
+- The gateway container, port `3001` (published on host loopback only, and routed by Traefik under the `/gateway` path prefix), with a named volume for the agent registry file.
+- The dashboard container (`app`), port `3000`, attached to the external `traefik` network with Traefik labels for `Host(\`ops.opentriologue.ai\`)` and Let's Encrypt TLS.
 
-Migrations run automatically on gateway startup; there is no separate migrate step. See [configuration.md](configuration.md) for the env vars each container needs.
+The prod compose file does not set `DATABASE_URL`, so unless you supply one (for example in the `.env` file the services read), the gateway runs in memory-only mode: the state store and the persistent event log are disabled. The default `docker-compose.yml` is the Postgres-backed setup (PostgreSQL + gateway + dashboard). When a database is configured, migrations run automatically on gateway startup; there is no separate migrate step. See [configuration.md](configuration.md) for the env vars each container needs.
 
 ## Feature status
 
