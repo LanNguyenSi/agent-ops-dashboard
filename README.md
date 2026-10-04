@@ -82,7 +82,7 @@ what depends on it, and without an anchor at the root, a from-scratch lockfile
 resolution can place `next` under `apps/dashboard/node_modules/next` instead
 of the hoisted root `node_modules/next`, which breaks `eslint-config-next`'s
 bare `require('next/dist/compiled/babel/eslint-parser')` (see the
-[Unreleased] entry in [CHANGELOG.md](CHANGELOG.md) for the failure mode and
+[0.3.3] entry in [CHANGELOG.md](CHANGELOG.md) for the failure mode and
 verification). The `overrides["@octokit/request"]` entry pins only the
 nested `content-type` dependency to `^2`, not the whole package, because
 `@octokit/request` versions past 10.0.9 pull `content-type@3.x`, which
