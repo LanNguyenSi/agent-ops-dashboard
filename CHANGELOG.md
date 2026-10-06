@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `npm audit` gate: an ID-scoped, dated allowlist (`.github/audit-allowlist.json`) with one entry for GHSA-vfj7-8cjw-p6xm (braces 3.0.3, dev dependency only, no upstream fix; reviewBy 2026-11-06). The gate step now captures `npm audit --audit-level=high --json` and classifies it with the dependency-free `scripts/audit-gate.mjs`, vendored from depsight commit be8c7ea, so any other HIGH or CRITICAL advisory still fails the job. A dependency-free self-test (`node --test scripts/audit-gate.test.mjs`) runs before the gate.
+
 ## [0.3.3] - 2026-10-04
 
 Security and deploy-hardening patch: advisory fixes across the dependency tree, Docker images built from the root lockfile, and CI/publish workflow hardening. No breaking changes.
