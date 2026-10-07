@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Security
+
+- **`@modelcontextprotocol/sdk` 1.32.1** (GHSA-6qxp-vccf-f47h, task aff72e2b): the lockfile resolves 1.32.1 and the `@opentriologue/mcp` dependency range is now `~1.32.1`, so consumers cannot resolve an affected version. Since 1.30.1 the SDK's HTTP server transports apply a 4 MiB default request-body limit and a 100-message batch cap.
+- **sharp 0.35.5** (GHSA-wq5f-xc86-pv6w, task aff72e2b), installed through `next`: the lockfile resolves 0.35.5 with matching `@img/*` binaries and the `sharp` override floor is now `^0.35.5`.
+
 ### Added
 
 - `npm audit` gate: an ID-scoped, dated allowlist (`.github/audit-allowlist.json`) with one entry for GHSA-vfj7-8cjw-p6xm (braces 3.0.3, dev dependency only, no upstream fix; reviewBy 2026-11-06). The gate step now captures `npm audit --audit-level=high --json` and classifies it with the dependency-free `scripts/audit-gate.mjs`, vendored from depsight commit be8c7ea, so any other HIGH or CRITICAL advisory still fails the job. A dependency-free self-test (`node --test scripts/audit-gate.test.mjs`) runs before the gate.
