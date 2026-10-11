@@ -1,8 +1,8 @@
 # Architecture
 
-agent-ops-dashboard is an npm-workspaces monorepo with two deployable units, a managed PostgreSQL instance, and an external GitHub integration.
+agent-ops-dashboard is an npm-workspaces monorepo with two deployable units, an optional PostgreSQL database (state store and durable event log), and an external GitHub integration.
 
-Stack: Next.js 16, TypeScript, Tailwind CSS, Recharts and Octokit (dashboard); Fastify (gateway); PostgreSQL.
+Stack: Next.js 16, TypeScript, Tailwind CSS and Octokit (dashboard); Fastify (gateway); PostgreSQL.
 
 ```
 agent-ops-dashboard/
@@ -16,6 +16,27 @@ agent-ops-dashboard/
 
 The two deployable units are `apps/dashboard` and `packages/gateway`; `packages/client` and `packages/mcp` are published npm packages, not part of the running deployment.
 
+## Request flow
+
+The diagram below shows which component calls which. In `docker-compose.prod.yml`, agents reach the gateway through Traefik under the `/gateway` path prefix (the prefix is stripped), and the gateway port `3001` is also published on host loopback for host-side agents. The default `docker-compose.yml` has no `/gateway` route and publishes the gateway on port `3001`; in the dev loop agents use port `3001` directly.
+
+```mermaid
+flowchart TD
+  A["Agents: @opentriologue/client CLI,<br/>@opentriologue/mcp server"]
+  D["dashboard<br/>Next.js :3000"]
+  G["gateway<br/>Fastify :3001"]
+  GH[GitHub REST API]
+  TR["Triologue health endpoint (external)"]
+  P[("PostgreSQL<br/>agent_state, agent_events")]
+  R[("REGISTRY_FILE (JSON)")]
+  A -->|REST| G
+  D -->|"/api/gateway/*<br/>proxies"| G
+  D -->|"Octokit: /api/github/*,<br/>/api/pipeline/*, /api/alerts"| GH
+  D -->|"/api/agents, /api/alerts"| TR
+  G -->|"only when DATABASE_URL is set"| P
+  G -->|"every registry mutation"| R
+```
+
 ## Components
 
 ### Gateway (`packages/gateway`)
@@ -24,11 +45,29 @@ A small Fastify service responsible for everything agents talk to directly:
 
 - **Agent registry** (`src/registry.ts`): in-memory `Map<id, Agent>` with a per-agent timer that flips status to `offline` after 60s without a heartbeat. The registry persists to `REGISTRY_FILE` (default `agent-registry.json`) on every mutation, and on boot it reloads agents but forces them to `offline` until they next heartbeat. This avoids stale "online" rows after a redeploy.
 - **State store** (`src/state/`): namespaced JSON KV with optimistic concurrency. Each entry stores a monotonically increasing `version`; the `cas` route checks `expectedVersion` against the current row inside a single SQL statement. Validation uses zod (`PutStateSchema`, `CasStateSchema`).
-- **Activity feed** (`src/events/`): every meaningful registry or state mutation appends a row to `agent_events` and broadcasts the row to active SSE subscribers.
+- **Activity feed** (`src/events/`): agent registration, heartbeats and every state-store write append a row to `agent_events` and broadcast it to active SSE subscribers; agent deletion and offline transitions appear only on the registry `/events` stream.
+
+The agent status lifecycle in the registry: a heartbeat sets the status its body carries (`online`, `idle`, `busy` or `offline`, default `online`), so any status can follow any other; the diagram shows the usual paths. `DELETE /agents/:id` removes an agent in any status.
+
+```mermaid
+stateDiagram-v2
+  [*] --> online: POST /agents/register
+  online --> idle: heartbeat status=idle
+  online --> busy: heartbeat status=busy
+  idle --> online: heartbeat
+  busy --> online: heartbeat
+  online --> offline: 60s without heartbeat
+  idle --> offline: 60s without heartbeat
+  busy --> offline: 60s without heartbeat
+  offline --> online: heartbeat
+  note left of offline: all agents reload as offline after a gateway restart
+  online --> [*]: DELETE /agents/:id
+  offline --> [*]: DELETE /agents/:id
+```
 
 The gateway boots in two modes depending on `DATABASE_URL`:
 
-- With a database: runs migrations on startup, registers state and event routes, and persists every event.
+- With a database: runs migrations on startup, registers state and event routes, and persists every event. If the database is unreachable or a migration fails at boot, the gateway logs `[db] Failed to initialize DB features` and runs without the state and event routes (they answer `404`) until it is restarted; it does not retry.
 - Without a database: still serves the agent registry and an in-memory SSE stream, but the state store and event log are unavailable. This is intentional, the gateway is the source of truth for live agents and should never fail to start because the database is down.
 
 ### Dashboard (`apps/dashboard`)
@@ -36,10 +75,12 @@ The gateway boots in two modes depending on `DATABASE_URL`:
 Next.js 16 App Router. The `/app/api/*` routes do three jobs:
 
 1. **GitHub integration**: `app/api/github/*` calls the GitHub REST API via Octokit (`GITHUB_TOKEN`), aggregates CI status, open PRs, and Dependabot vulnerability counts per repo, and caches the result for 5 minutes.
-2. **Pipeline analytics**: `app/api/pipeline/*` reads workflow runs across the configured `GITHUB_REPOS` set and produces stats and trend charts rendered with Recharts on the client.
+2. **Pipeline analytics**: `app/api/pipeline/*` reads workflow runs across the configured `GITHUB_REPOS` set and returns stats and trend data (the `PipelineChart` and `PipelineList` components exist but no page mounts them).
 3. **Gateway proxies**: `app/api/gateway/*` are thin server-side proxies onto the gateway so that browser clients can hit `/api/gateway/*` from the same origin and avoid CORS gymnastics. They also let server components do agent calls without leaking `GATEWAY_INTERNAL_URL` to the browser.
 
-Browser components subscribe to `/api/gateway/events/stream` for the live agent and state feed, and poll `/api/github/repos` (with an `EventSource` fallback for some panels).
+Browser components subscribe to `/api/gateway/events/stream` for the activity feed, poll `/api/gateway/agents` every 15s for the agent bar (falling back to `/api/agents`), and fetch `/api/github/repos` on load and when filters change (`Sync` calls `POST /api/github/sync` first).
+
+`/api/agents` does not read this repo's gateway: it fetches the hard-coded Triologue health endpoint (`https://opentriologue.ai/gateway/health`) and returns mock agents when that request fails. A self-hosted dashboard therefore makes outbound requests to that host whenever the agent bar falls back to `/api/agents` or `/api/alerts` evaluates its agent rules.
 
 ### PostgreSQL
 
@@ -55,18 +96,47 @@ Schema highlights:
 Two streams exist:
 
 - `/events` on the gateway, broadcasts the *registry* SSE stream: `snapshot`, `agent:registered`, `agent:updated`, `agent:deleted`, `agent:offline`, `agent:command`. New connections receive a `snapshot` frame on connect.
-- `/api/events/stream` on the gateway, the *durable activity feed*. Frames include `id:`, `event:`, and `data:`. On reconnect the client supplies `Last-Event-ID: <id>`, and the server queries `agent_events` for everything strictly greater than that id (capped at 200) before resuming live broadcasts. This is what prevents holes in the timeline during a network blip or rolling deploy.
+- `/api/events/stream` on the gateway, the *durable activity feed*. Frames include `id:`, `event:`, and `data:`. A gateway client that reconnects with `Last-Event-ID: <id>` gets missed events replayed: the server queries `agent_events` for everything strictly greater than that id (capped at 200) before resuming live broadcasts (requires `DATABASE_URL`). The dashboard's activity page reconnects with a fresh `EventSource` and does not replay events missed while disconnected.
 
-Subscribers are per-request closures registered with `eventService.subscribe({ matches, send })`, and the broadcaster removes any subscriber whose `send` throws (typically a closed socket). A 30s keepalive comment (`: heartbeat\n\n`) keeps proxies from closing idle connections; reverse proxies must not buffer (`X-Accel-Buffering: no` is set in the response headers).
+The diagram below shows how one heartbeat reaches both streams.
+
+```mermaid
+flowchart TD
+  A[Agent] -->|"POST /agents/:id/heartbeat"| G[Gateway routes]
+  G -->|"heartbeat: reset 60s timer, persist"| R[AgentRegistry]
+  R -->|"agent:updated frame"| S["/events subscribers"]
+  G -->|"emit agent.heartbeat"| E[EventService]
+  E -->|"INSERT ... RETURNING *<br/>(only with DATABASE_URL)"| DB[("PostgreSQL<br/>agent_events")]
+  E -->|"id / event / data frame"| F["/api/events/stream subscribers"]
+```
+
+Replay applies only to clients that send `Last-Event-ID`. The dashboard proxy passes frames through to the browser, but after a reconnect the activity page sends only a `cursor` query parameter, which the proxy does not forward, so it gets live frames only.
+
+```mermaid
+sequenceDiagram
+  participant C as Direct SSE client
+  participant G as Gateway /api/events/stream
+  participant P as Dashboard proxy
+  participant B as Browser EventSource
+  C->>G: reconnect with Last-Event-ID
+  G-->>C: first 200 events after that id (oldest first, with DATABASE_URL), then live
+  G-->>P: id / event / data frames
+  P-->>B: text/event-stream passthrough
+  B->>P: after an error, new EventSource with ?cursor=id
+  P->>G: GET /api/events/stream (cursor dropped)
+  G-->>P: live frames only
+```
+
+Subscribers are per-request closures registered with `eventService.subscribe({ matches, send })`, and the broadcaster removes any subscriber whose `send` throws (typically a closed socket). On `/api/events/stream` a 30s keepalive comment (`: heartbeat`) keeps proxies from closing idle connections and `X-Accel-Buffering: no` is set; `/events` sends a `: ping` comment every 30s.
 
 ## GitHub integration
 
 `apps/dashboard/lib` wraps Octokit with a small caching layer. The repo-health pipeline:
 
 1. List the token's repos with `GET /user/repos`, filtered to the configured owner; fall back to `GET /users/{owner}/repos` (public repos only) when that fails or returns nothing.
-2. For each repo, fetch the latest workflow run on `default_branch`, the open-PR count, and (best-effort) Dependabot alert summary.
-3. Apply the request's `filter`, `language`, `sort`, and `order` selectors, then paginate.
-4. Cache the merged result for 5 minutes keyed by the request's filter/sort signature; `meta.cache` reports `hit`, `miss`, or `stale`.
+2. For each repo, fetch the most recent completed workflow run (any branch), the failing check runs on `default_branch`, the open-PR count, and (best-effort) a Dependabot alert summary.
+3. Cache the unfiltered per-owner snapshot for 5 minutes (key: owner); `meta.cache` reports `hit`, `miss`, or `stale`.
+4. Apply the request's `filter`, `language`, `sort`, and `order` selectors to the cached snapshot, then paginate.
 
 Errors from individual repos (e.g. forks where Dependabot is unavailable) are collected into `errors[]` rather than failing the whole response.
 
@@ -84,9 +154,9 @@ The prod compose file does not set `DATABASE_URL`, so unless you supply one (for
 | Feature | Status | Notes |
 |---|---|---|
 | Agent Registry | Live | Register, heartbeat, auto-offline after 60s |
-| Activity Feed | Live | SSE stream with `Last-Event-ID` replay |
+| Activity Feed | Live | SSE stream; `Last-Event-ID` replay for direct gateway clients (not used by the dashboard view) |
 | Shared State Store | Live | Namespaced KV with atomic CAS |
 | GitHub Repo Health | Live | All owner repos, CI status, filtering, sorting |
-| Alerts | Live | Alert rules with severity levels and status |
-| Pipeline Monitoring | Live | Workflow runs, stats, trends, cross-repo analytics |
+| Alerts | API only | `GET /api/alerts` evaluates rules over pipeline runs and agent activity and always appends sample alerts; no UI; acknowledge and resolve are not implemented |
+| Pipeline Monitoring | API only | `/api/pipeline/runs`, `/stats`, `/trends`; sample data when `GITHUB_REPOS` is unset; no dashboard panel |
 | MCP Integration | Live | See [packages/mcp/](../packages/mcp/README.md) (published as `@opentriologue/mcp`) |

@@ -23,7 +23,8 @@ The dashboard's own `/api/*` routes (GitHub repo health, pipeline analytics) do 
 | `/agents/register` | POST | Register a new agent, returns `201` with the assigned `id` |
 | `/agents/:id/heartbeat` | POST | Send heartbeat (resets the 60s offline timer) |
 | `/agents/:id` | DELETE | Remove an agent |
-| `/agents/:id/command` | POST | Back-channel command broadcast over SSE |
+| `/agents/:id/command` | POST | Broadcast `{ command, args? }` to `/events` subscribers as an `agent:command` frame; `404` if the agent is unknown |
+| `/events` | GET | Registry SSE stream: a `snapshot` frame on connect, then `agent:registered`, `agent:updated`, `agent:offline`, `agent:deleted` and `agent:command` frames. Each frame is a single `data:` line with JSON `{ type, data, timestamp }` (no `id:` or `event:` lines, no replay); `: ping` keepalive every 30s |
 
 **Register:**
 
@@ -68,8 +69,8 @@ Namespaced key-value store with atomic compare-and-swap, backed by PostgreSQL. V
 | `/api/state/:namespace` | GET | List keys in a namespace, returns `{ namespace, count, keys[] }` |
 | `/api/state/:namespace/:key` | GET | Get an entry, returns `404` if absent |
 | `/api/state/:namespace/:key` | PUT | Upsert an entry, body `{ value, updatedBy? }` |
-| `/api/state/:namespace/:key` | DELETE | Delete an entry, returns `204` |
-| `/api/state/:namespace/:key/cas` | POST | Atomic compare-and-swap, body `{ expectedVersion, value, updatedBy? }` |
+| `/api/state/:namespace/:key` | DELETE | Delete an entry, returns `204`, or `404` if absent |
+| `/api/state/:namespace/:key/cas` | POST | Atomic compare-and-swap, body `{ expectedVersion, value, updatedBy? }`; `404` if the key does not exist (create it with PUT first) |
 
 **Set a value:**
 
@@ -110,8 +111,8 @@ On version mismatch the gateway returns `409` with `{ error: "CAS_CONFLICT", exp
 
 | Endpoint | Method | Description |
 |---|---|---|
-| `/api/events` | GET | Query events: filter by `agentId`, `eventType`, `since` (ISO ts), `cursor`, `limit` (max 200) |
-| `/api/events/stream` | GET | SSE live stream with `Last-Event-ID` replay |
+| `/api/events` | GET | Query events: filter by `agentId`, `eventType`, `since` (ISO ts), `cursor`, `limit` (default 50, max 200); returns `{ events, count, nextCursor }` |
+| `/api/events/stream` | GET | SSE live stream with `Last-Event-ID` replay; optional `agentId` and `eventType` filters |
 | `/api/events/stats` | GET | Active SSE subscriber count |
 
 Recorded event types (see `packages/gateway/src/events/event.service.ts`):
@@ -134,7 +135,7 @@ event: agent.heartbeat
 data: {"id":4821,"agentId":"8a7c1f1e-...","eventType":"agent.heartbeat","payload":{"status":"online"},"createdAt":"2026-04-28T12:00:30.000Z"}
 ```
 
-Each frame includes an `id`, `event` type, and JSON `data`. Reconnect with `Last-Event-ID: <last-seen-id>` to replay anything missed while disconnected (up to the most recent 200 events).
+Each frame includes an `id`, `event` type, and JSON `data`. Reconnect with `Last-Event-ID: <last-seen-id>` to replay missed events: the gateway sends up to the first 200 events after that id (oldest first) and then switches to live frames. After a longer gap, page through `GET /api/events?cursor=<id>` for the rest. Replay needs `DATABASE_URL`. The dashboard's activity page does not send `Last-Event-ID` when it reconnects, so it shows only live events after a reconnect.
 
 ## Dashboard: GitHub Repo Health
 
@@ -144,7 +145,7 @@ Returns repository health for every repo under an owner: CI status, open PR coun
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `owner` | string | `GITHUB_OWNER` env or `LanNguyenSi` | GitHub user/org to scan |
+| `owner` | string | `GITHUB_OWNER`, else the owner of `GITHUB_REPOS` when all entries share one (an entry without `/` counts as an owner name), else `LanNguyenSi` | GitHub user/org to scan |
 | `limit` | int or `"all"` | `10` | Page size (1 to 100) or `"all"` to disable pagination |
 | `page` | int | `1` | Page number, must be >= 1 |
 | `sort` | string | `updated` | `updated`, `stars`, `name`, `ci_status` |
@@ -162,7 +163,7 @@ Returns repository health for every repo under an owner: CI status, open PR coun
       "repo": "agent-ops-dashboard",
       "default_branch": "main",
       "html_url": "https://github.com/...",
-      "ci_status": "success",                // success | failure | pending | unknown
+      "ci_status": "success",                // success | failure | unknown
       "open_pr_count": 2,
       "failing_checks_count": 0,
       "last_workflow_run": { /* ... */ } ,
@@ -210,15 +211,15 @@ curl "https://ops.opentriologue.ai/api/github/repos?filter=failing&page=2"
 | Endpoint | Method | Description |
 |---|---|---|
 | `/api/health` | GET | Dashboard health check |
-| `/api/agents` | GET | Agent activity (proxied + decorated from the gateway) |
-| `/api/alerts` | GET | Alert rules and status |
-| `/api/pipeline/runs` | GET | Pipeline workflow runs |
+| `/api/agents` | GET | Legacy agent list read from the Triologue health endpoint (`https://opentriologue.ai/gateway/health`, hard-coded), with mock data when that is unreachable; not backed by this repo's gateway. The agent bar uses it only as a fallback when `/api/gateway/agents` fails, and alert rules read it |
+| `/api/alerts` | GET | Alerts from rule evaluation plus built-in sample alerts; `includeStats=true` adds a `stats` object with counts by status |
+| `/api/pipeline/runs` | GET | Pipeline workflow runs; filters `repository`, `branch`, `status`, `startDate`, `endDate`, `limit` (default 50) |
 | `/api/pipeline/stats` | GET | Pipeline statistics |
-| `/api/pipeline/trends` | GET | Pipeline trends over time |
+| `/api/pipeline/trends` | GET | Pipeline trends over time; `period` = `7d` (default), `30d` or `90d` |
 | `/api/gateway/agents` | GET | Gateway agents proxy |
 | `/api/gateway/agents/register` | POST | Gateway register proxy |
-| `/api/gateway/agents/heartbeat` | POST | Gateway heartbeat proxy |
-| `/api/gateway/events/stream` | GET | Gateway SSE proxy |
+| `/api/gateway/agents/heartbeat` | POST | Gateway heartbeat proxy; `?id=<agentId>` is required (`400` without it) |
+| `/api/gateway/events/stream` | GET | Gateway SSE proxy; optional `agentId` and `eventType` |
 | `/api/github/checks` | GET | CI check results for monitored repos |
 | `/api/github/prs` | GET | Pull request data |
 | `/api/github/sync` | POST | Force a refresh of cached repo data |

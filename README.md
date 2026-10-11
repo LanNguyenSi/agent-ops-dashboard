@@ -10,14 +10,14 @@ agent-ops-dashboard is a Next.js + Fastify monorepo that gives AI agents (Claude
 
 | Package | Purpose | Docs |
 |---|---|---|
-| [apps/dashboard](apps/dashboard) | Next.js frontend: agent view, GitHub repo health, pipeline analytics | this README, [docs/architecture.md](docs/architecture.md) |
+| [apps/dashboard](apps/dashboard) | Next.js frontend: agent bar, GitHub repo health, activity feed; pipeline and alert APIs | this README, [docs/architecture.md](docs/architecture.md) |
 | [packages/gateway](packages/gateway) | Fastify REST API + SSE: agent registry, shared state store, activity feed | [docs/api.md](docs/api.md), [docs/architecture.md](docs/architecture.md) |
 | [packages/client](packages/client) | `@opentriologue/client`: CLI + SDK for the gateway | [packages/client/README.md](packages/client/README.md) |
 | [packages/mcp](packages/mcp) | `@opentriologue/mcp`: MCP server so AI agents (Claude Code and others) can call the gateway directly | [packages/mcp/README.md](packages/mcp/README.md) |
 
 ## Quick start
 
-The hosted dashboard is live at **[ops.opentriologue.ai](https://ops.opentriologue.ai)**: register an agent, push a heartbeat, or stream the activity feed without installing anything.
+The hosted dashboard at **[ops.opentriologue.ai](https://ops.opentriologue.ai)** shows the agent bar, repo health and the activity feed. Calls to its gateway API need a token issued by the instance operator; to try the API yourself, self-host as below.
 
 To self-host (prerequisites: Docker with Compose v2 for the container path; Node.js 20+ and npm for the dev loop):
 
@@ -33,16 +33,21 @@ Or run the dev loop without Docker:
 
 ```bash
 npm install
-export GATEWAY_TOKEN=dev-token   # the gateway has no dotenv loader, so set it in the environment
-make dev                         # dashboard on :3000
-npm run dev:gateway              # gateway on :3001
+# terminal 1: gateway on :3001 (it has no dotenv loader)
+export GATEWAY_TOKEN=dev-token
+npm run dev:gateway
+# terminal 2: dashboard on :3000, pointed at the local gateway
+export GATEWAY_TOKEN=dev-token GATEWAY_INTERNAL_URL=http://localhost:3001
+npm run dev
 ```
+
+Without `GATEWAY_INTERNAL_URL` the dashboard targets the Compose hostname `agent-ops-gateway`, its `/api/gateway/agents` proxies return `502`, and the agent bar falls back to `/api/agents`, which does not read your gateway. With both variables exported in one shell, `npm run dev:all` starts both servers.
 
 The gateway requires a Bearer token: every route except `/health` returns `503` when `GATEWAY_TOKEN` is unset and `401` when a request omits `Authorization: Bearer <GATEWAY_TOKEN>`.
 
 ## Usage
 
-Register an agent against the live gateway:
+Register an agent against a gateway (hosted gateway shown; self-hosted: `http://localhost:3001/agents/register`):
 
 ```bash
 $ curl -sX POST https://ops.opentriologue.ai/gateway/agents/register \
@@ -70,7 +75,7 @@ More endpoints (state store, activity feed, GitHub repo health), including the S
 | Understand the components, SSE design, GitHub integration, and feature status | [docs/architecture.md](docs/architecture.md) |
 | Configure env vars, GitHub tokens, and deployment | [docs/configuration.md](docs/configuration.md) |
 
-See also: [depsight](https://github.com/LanNguyenSi/depsight) (deep CVE/license/dependency scanning for a single repo, complements this dashboard's multi-repo view) and [repo-dashboard](https://github.com/LanNguyenSi/repo-dashboard) (lightweight CLI alternative).
+See also: [depsight](https://github.com/LanNguyenSi/depsight) (CVE, license and dependency-health scanning per repository, deeper than this dashboard's Dependabot counts) and [repo-dashboard](https://github.com/LanNguyenSi/repo-intelligence/tree/master/packages/repo-dashboard) (lightweight CLI alternative, part of repo-intelligence).
 
 ## Dependency notes
 
@@ -93,11 +98,11 @@ requires Node >= 22 and trips `EBADENGINE` under this repo's Node 20 CI leg.
 ```bash
 npm install
 npm test              # or: npm run test --workspaces --if-present
-npm run lint --workspace=apps/dashboard
-npm run lint --workspace=packages/gateway
-npm run typecheck --workspace=packages/gateway
+make lint             # the same lint and type-check steps as CI (dashboard and gateway)
 npm run build
 ```
+
+`make ci` runs `make lint`, the tests and a build; `make help` lists all targets. CI also runs an `npm audit` gate on pull requests and pushes to `master` that fails on HIGH or CRITICAL advisories unless they are allowlisted in `.github/audit-allowlist.json`.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the PR workflow and issue guidelines.
 
