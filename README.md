@@ -41,7 +41,7 @@ export GATEWAY_TOKEN=dev-token GATEWAY_INTERNAL_URL=http://localhost:3001
 npm run dev
 ```
 
-Without `GATEWAY_INTERNAL_URL` the dashboard targets the Compose hostname `agent-ops-gateway`, its `/api/gateway/*` proxies return `502`, and the agent bar falls back to `/api/agents`, which does not read your gateway. With both variables exported in one shell, `npm run dev:all` starts both servers.
+Without `GATEWAY_INTERNAL_URL` the dashboard targets the Compose hostname `agent-ops-gateway`, its `/api/gateway/agents` proxies return `502`, and the agent bar falls back to `/api/agents`, which does not read your gateway. With both variables exported in one shell, `npm run dev:all` starts both servers.
 
 The gateway requires a Bearer token: every route except `/health` returns `503` when `GATEWAY_TOKEN` is unset and `401` when a request omits `Authorization: Bearer <GATEWAY_TOKEN>`.
 

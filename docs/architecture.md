@@ -18,25 +18,20 @@ The two deployable units are `apps/dashboard` and `packages/gateway`; `packages/
 
 ## Request flow
 
-The diagram below shows which component calls which, and with which credential, in the `docker-compose.prod.yml` layout, where Traefik routes the `ops.opentriologue.ai` host to the dashboard and the `/gateway` path prefix to the gateway. With the default `docker-compose.yml` and in the dev loop there is no `/gateway` route: clients reach the dashboard on port 3000 and the gateway on port 3001 directly.
+The diagram below shows which component calls which. In `docker-compose.prod.yml`, agents reach the gateway through Traefik under the `/gateway` path prefix (the prefix is stripped), and the gateway port `3001` is also published on host loopback for host-side agents. The default `docker-compose.yml` has no `/gateway` route and publishes the gateway on port `3001`; in the dev loop agents use port `3001` directly.
 
 ```mermaid
 flowchart TD
-  B[Browser]
   A["Agents: @opentriologue/client CLI,<br/>@opentriologue/mcp server"]
-  T["Traefik (prod compose only)"]
   D["dashboard<br/>Next.js :3000"]
-  G["gateway<br/>Fastify :3001<br/>Bearer check on every route except GET /health"]
+  G["gateway<br/>Fastify :3001"]
   GH[GitHub REST API]
   TR["Triologue health endpoint (external)"]
   P[("PostgreSQL<br/>agent_state, agent_events")]
   R[("REGISTRY_FILE (JSON)")]
-  B -->|"Host ops.opentriologue.ai"| T
-  A -->|"/gateway/*, Bearer GATEWAY_TOKEN"| T
-  T --> D
-  T -->|"/gateway prefix stripped"| G
-  D -->|"/api/gateway/* proxies via GATEWAY_INTERNAL_URL,<br/>server-side Bearer GATEWAY_TOKEN"| G
-  D -->|"/api/github/*, /api/pipeline/*, /api/alerts<br/>Octokit with GITHUB_TOKEN"| GH
+  A -->|REST| G
+  D -->|"/api/gateway/*<br/>proxies"| G
+  D -->|"Octokit: /api/github/*,<br/>/api/pipeline/*, /api/alerts"| GH
   D -->|"/api/agents, /api/alerts"| TR
   G -->|"only when DATABASE_URL is set"| P
   G -->|"every registry mutation"| R
@@ -103,23 +98,16 @@ Two streams exist:
 - `/events` on the gateway, broadcasts the *registry* SSE stream: `snapshot`, `agent:registered`, `agent:updated`, `agent:deleted`, `agent:offline`, `agent:command`. New connections receive a `snapshot` frame on connect.
 - `/api/events/stream` on the gateway, the *durable activity feed*. Frames include `id:`, `event:`, and `data:`. A gateway client that reconnects with `Last-Event-ID: <id>` gets missed events replayed: the server queries `agent_events` for everything strictly greater than that id (capped at 200) before resuming live broadcasts (requires `DATABASE_URL`). The dashboard's activity page reconnects with a fresh `EventSource` and does not replay events missed while disconnected.
 
-The sequence below shows how one heartbeat reaches both streams.
+The diagram below shows how one heartbeat reaches both streams.
 
 ```mermaid
-sequenceDiagram
-  participant A as Agent
-  participant G as Gateway routes
-  participant R as AgentRegistry
-  participant S as /events subscribers
-  participant E as EventService
-  participant DB as PostgreSQL agent_events
-  participant F as /api/events/stream subscribers
-  A->>G: POST /agents/:id/heartbeat (Bearer)
-  G->>R: heartbeat (reset 60s timer, persist)
-  R-->>S: agent:updated frame
-  G->>E: emit agent.heartbeat
-  E->>DB: INSERT ... RETURNING * (only with DATABASE_URL)
-  E-->>F: id / event / data frame
+flowchart TD
+  A[Agent] -->|"POST /agents/:id/heartbeat"| G[Gateway routes]
+  G -->|"heartbeat: reset 60s timer, persist"| R[AgentRegistry]
+  R -->|"agent:updated frame"| S["/events subscribers"]
+  G -->|"emit agent.heartbeat"| E[EventService]
+  E -->|"INSERT ... RETURNING *<br/>(only with DATABASE_URL)"| DB[("PostgreSQL<br/>agent_events")]
+  E -->|"id / event / data frame"| F["/api/events/stream subscribers"]
 ```
 
 Replay applies only to clients that send `Last-Event-ID`. The dashboard proxy passes frames through to the browser, but after a reconnect the activity page sends only a `cursor` query parameter, which the proxy does not forward, so it gets live frames only.

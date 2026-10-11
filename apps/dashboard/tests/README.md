@@ -74,4 +74,4 @@ The server is expected at `http://localhost:3000`. Set `E2E_BASE_URL` to point t
 E2E_BASE_URL=http://localhost:3100 npm test
 ```
 
-`npm test` runs with coverage thresholds, including a per-file floor for `app/api/**/route.ts` (see `vitest.config.ts`).
+`npm test` runs with coverage thresholds, including a separate floor for the `app/api/**/route.ts` handlers, measured over all of them together (see `vitest.config.ts`).
