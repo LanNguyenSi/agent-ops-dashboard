@@ -72,7 +72,7 @@ stateDiagram-v2
 
 The gateway boots in two modes depending on `DATABASE_URL`:
 
-- With a database: runs migrations on startup, registers state and event routes, and persists every event.
+- With a database: runs migrations on startup, registers state and event routes, and persists every event. If the database is unreachable or a migration fails at boot, the gateway logs `[db] Failed to initialize DB features` and runs without the state and event routes (they answer `404`) until it is restarted; it does not retry.
 - Without a database: still serves the agent registry and an in-memory SSE stream, but the state store and event log are unavailable. This is intentional, the gateway is the source of truth for live agents and should never fail to start because the database is down.
 
 ### Dashboard (`apps/dashboard`)
@@ -84,6 +84,8 @@ Next.js 16 App Router. The `/app/api/*` routes do three jobs:
 3. **Gateway proxies**: `app/api/gateway/*` are thin server-side proxies onto the gateway so that browser clients can hit `/api/gateway/*` from the same origin and avoid CORS gymnastics. They also let server components do agent calls without leaking `GATEWAY_INTERNAL_URL` to the browser.
 
 Browser components subscribe to `/api/gateway/events/stream` for the activity feed, poll `/api/gateway/agents` every 15s for the agent bar (falling back to `/api/agents`), and fetch `/api/github/repos` on load and when filters change (`Sync` calls `POST /api/github/sync` first).
+
+`/api/agents` does not read this repo's gateway: it fetches the hard-coded Triologue health endpoint (`https://opentriologue.ai/gateway/health`) and returns mock agents when that request fails. A self-hosted dashboard therefore makes outbound requests to that host whenever the agent bar falls back to `/api/agents` or `/api/alerts` evaluates its agent rules.
 
 ### PostgreSQL
 

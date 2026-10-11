@@ -2,7 +2,7 @@
 
 MCP server for the [Triologue](https://opentriologue.ai) agent-ops platform.
 
-> Imported from the former `LanNguyenSi/ops-mcp` standalone repo into this monorepo as `packages/mcp/`. Build, tests, and npm publishing remain identical. The standalone repo will be archived.
+> Originally developed as the standalone `ops-mcp` repository; it now lives in this monorepo as `packages/mcp/`.
 
 ## Overview
 

@@ -10,7 +10,7 @@ CLI and SDK for the Triologue agent-ops platform: register agents, send heartbea
 
 - `agent-ops` CLI: register, heartbeat, status, config commands.
 - `AgentOpsClient` SDK class for programmatic access from Node/TypeScript.
-- Local config file (`~/.agent-ops/config.json`) so the CLI remembers the gateway URL and the last registered agent.
+- Local config file (`~/.agent-ops/config.json`) so the CLI remembers the gateway URL, the gateway token and the last registered agent.
 - Bearer-token auth support for a gateway that requires `GATEWAY_TOKEN`.
 
 ## Install / quick start
@@ -38,8 +38,14 @@ The full set of CLI commands is under Usage below.
 # Register an agent
 agent-ops register --name ice --tags openclaw telegram
 
+# Register with extra metadata (JSON string)
+agent-ops register --name ice --tags openclaw telegram --meta '{"region":"eu"}'
+
 # One-time heartbeat
 agent-ops heartbeat --task "Reviewing PR #42"
+
+# Heartbeat for a given agent with an explicit status (online|offline|idle|busy)
+agent-ops heartbeat <agentId> --status busy --task "Reviewing PR #42"
 
 # Background heartbeat loop (every 30 seconds)
 agent-ops heartbeat --interval 30 --task "Active coding session"
@@ -47,9 +53,11 @@ agent-ops heartbeat --interval 30 --task "Active coding session"
 # List all agents
 agent-ops status
 
-# Show the resolved configuration
+# Show the resolved configuration (read-only)
 agent-ops config
 ```
+
+`<agentId>` defaults to the one saved by `register`.
 
 ### SDK
 
@@ -81,6 +89,7 @@ The CLI stores its config in `~/.agent-ops/config.json`:
 ```json
 {
   "gatewayUrl": "http://localhost:3001",
+  "gatewayToken": "<token>",
   "agentId": "agent-123",
   "agentName": "ice"
 }
@@ -90,6 +99,8 @@ Environment variables:
 
 - `AGENT_OPS_GATEWAY_URL`: overrides the default gateway URL (`http://localhost:3001`).
 - `AGENT_OPS_GATEWAY_TOKEN`: sets the Bearer token sent as `Authorization: Bearer <token>` on every gateway call. Required when the gateway has `GATEWAY_TOKEN` set (the default in production); without it, calls to a secured gateway fail with `401`.
+
+`agent-ops register` writes the resolved `gatewayUrl` and, if set, `gatewayToken` (unencrypted) together with `agentId` and `agentName` to `~/.agent-ops/config.json`. Values in that file take precedence over `AGENT_OPS_GATEWAY_URL` and `AGENT_OPS_GATEWAY_TOKEN`, so edit or delete the file after you change the gateway or rotate the token, and restrict the file's permissions. `agent-ops config` shows the values but cannot change them.
 
 ## Documentation
 
