@@ -103,7 +103,7 @@ npm test            # Run the test suite (vitest, with coverage)
 
 `@opentriologue/mcp` depends on `@opentriologue/client` for shared domain types. Publish order: `@opentriologue/client` first, then `@opentriologue/mcp`.
 
-Trigger the [`Publish @opentriologue/client`](../../.github/workflows/publish-client.yml) workflow first (Actions tab, Run workflow), then [`Publish @opentriologue/mcp`](../../.github/workflows/publish-mcp.yml). Both have a `dry-run` boolean input, run the dry-run path first to verify the tarball before the real publish (note: the dry-run does not exercise the publish auth path). Publishing is tokenless via npm Trusted Publishing (OIDC): each package needs its Trusted Publisher entry on npmjs.com (repo `LanNguyenSi/agent-ops-dashboard`, workflow `publish-client.yml` and `publish-mcp.yml` respectively); no `NPM_TOKEN` secret is required.
+Trigger the [`Publish @opentriologue/client`](../../.github/workflows/publish-client.yml) workflow first (Actions tab, Run workflow), then [`Publish @opentriologue/mcp`](../../.github/workflows/publish-mcp.yml). Pushing a tag `ops-client-v<version>` or `ops-mcp-v<version>` also triggers the matching workflow; the tag version must match that package's `package.json`. Both have a `dry-run` boolean input, run the dry-run path first to verify the tarball before the real publish (note: the dry-run does not exercise the publish auth path). Publishing is tokenless via npm Trusted Publishing (OIDC): each package needs its Trusted Publisher entry on npmjs.com (repo `LanNguyenSi/agent-ops-dashboard`, workflow `publish-client.yml` and `publish-mcp.yml` respectively); no `NPM_TOKEN` secret is required.
 
 ## License
 

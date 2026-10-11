@@ -134,7 +134,7 @@ event: agent.heartbeat
 data: {"id":4821,"agentId":"8a7c1f1e-...","eventType":"agent.heartbeat","payload":{"status":"online"},"createdAt":"2026-04-28T12:00:30.000Z"}
 ```
 
-Each frame includes an `id`, `event` type, and JSON `data`. Reconnect with `Last-Event-ID: <last-seen-id>` to replay anything missed while disconnected (up to the most recent 200 events).
+Each frame includes an `id`, `event` type, and JSON `data`. Reconnect with `Last-Event-ID: <last-seen-id>` to replay anything missed while disconnected (up to the most recent 200 events). The dashboard's activity page does not send `Last-Event-ID` when it reconnects, so it shows only live events after a reconnect.
 
 ## Dashboard: GitHub Repo Health
 
@@ -162,7 +162,7 @@ Returns repository health for every repo under an owner: CI status, open PR coun
       "repo": "agent-ops-dashboard",
       "default_branch": "main",
       "html_url": "https://github.com/...",
-      "ci_status": "success",                // success | failure | pending | unknown
+      "ci_status": "success",                // success | failure | unknown
       "open_pr_count": 2,
       "failing_checks_count": 0,
       "last_workflow_run": { /* ... */ } ,
@@ -211,7 +211,7 @@ curl "https://ops.opentriologue.ai/api/github/repos?filter=failing&page=2"
 |---|---|---|
 | `/api/health` | GET | Dashboard health check |
 | `/api/agents` | GET | Agent activity (proxied + decorated from the gateway) |
-| `/api/alerts` | GET | Alert rules and status |
+| `/api/alerts` | GET | Alerts from rule evaluation plus built-in sample alerts |
 | `/api/pipeline/runs` | GET | Pipeline workflow runs |
 | `/api/pipeline/stats` | GET | Pipeline statistics |
 | `/api/pipeline/trends` | GET | Pipeline trends over time |

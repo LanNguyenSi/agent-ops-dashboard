@@ -1,15 +1,19 @@
 # Tests
 
-This directory contains integration and contract tests for the Agent Ops Dashboard.
+This directory contains the dashboard's unit, integration and contract tests.
 
 ## Structure
 
 - **integration/** - Integration tests for critical paths and error handling
-  - `critical-path.test.ts` - Core user journey tests (agents, pipelines, alerts)
+  - `critical-path.test.ts` - Core API journey tests (agents, pipelines, alerts)
   - `error-handling.test.ts` - Error resilience and validation tests
 
 - **contract/** - API contract tests to prevent breaking changes
   - `integrations.test.ts` - API response structure verification
+
+- **api/** - Route handler tests for `app/api/**/route.ts`
+
+- **components/**, **alerts/**, **gateway/**, **github/**, **pipeline/** - Unit tests for components and `lib/` modules
 
 ## Running Tests
 
@@ -70,4 +74,4 @@ The server is expected at `http://localhost:3000`. Set `E2E_BASE_URL` to point t
 E2E_BASE_URL=http://localhost:3100 npm test
 ```
 
-For MVP, these tests provide basic coverage. Expand as needed for production.
+`npm test` runs with coverage thresholds, including a per-file floor for `app/api/**/route.ts` (see `vitest.config.ts`).
