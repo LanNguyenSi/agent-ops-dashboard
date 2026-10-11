@@ -60,7 +60,7 @@ stateDiagram-v2
   idle --> offline: 60s without heartbeat
   busy --> offline: 60s without heartbeat
   offline --> online: heartbeat
-  note right of offline: all agents reload as offline after a gateway restart
+  note left of offline: all agents reload as offline after a gateway restart
   online --> [*]: DELETE /agents/:id
   offline --> [*]: DELETE /agents/:id
 ```
@@ -119,7 +119,7 @@ sequenceDiagram
   participant P as Dashboard proxy
   participant B as Browser EventSource
   C->>G: reconnect with Last-Event-ID
-  G-->>C: first 200 events after that id (oldest first), then live
+  G-->>C: first 200 events after that id (oldest first, with DATABASE_URL), then live
   G-->>P: id / event / data frames
   P-->>B: text/event-stream passthrough
   B->>P: after an error, new EventSource with ?cursor=id

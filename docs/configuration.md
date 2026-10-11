@@ -23,7 +23,7 @@ Both the gateway and the dashboard read configuration from environment variables
 | `GATEWAY_TOKEN` | (none) | Bearer token the dashboard attaches to its server-side gateway calls. Must match the gateway's `GATEWAY_TOKEN`, otherwise the `/api/gateway/*` proxies get `401`/`503`. |
 | `GITHUB_TOKEN` | (required for repo health) | GitHub personal access token; see [GitHub token](#github-token) for the access it needs |
 | `GITHUB_OWNER` | (none; `docker-compose.yml` sets `LanNguyenSi`) | Default GitHub user/org for the repo-health dashboard. When unset, the owner of `GITHUB_REPOS` is used when all entries share one, else `LanNguyenSi` |
-| `GITHUB_REPOS` | (none; the compose files set a default list) | Comma-separated `owner/repo` pairs; entries without an owner are ignored. Used by pipeline monitoring, `/api/github/checks`, `/api/github/prs` and alerts; when all entries share one owner it also sets the default owner for repo health |
+| `GITHUB_REPOS` | (none; the compose files set a default list) | Comma-separated `owner/repo` pairs. Used by pipeline monitoring, `/api/github/checks`, `/api/github/prs` and alerts; pipeline monitoring skips entries that are not `owner/repo` pairs. When all entries share one owner it also sets the default owner for repo health; there an entry without `/` counts as an owner name |
 
 ### Compose-level
 

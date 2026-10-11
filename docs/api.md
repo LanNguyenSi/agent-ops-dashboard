@@ -145,7 +145,7 @@ Returns repository health for every repo under an owner: CI status, open PR coun
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `owner` | string | `GITHUB_OWNER`, else the owner of `GITHUB_REPOS` when all entries share one, else `LanNguyenSi` | GitHub user/org to scan |
+| `owner` | string | `GITHUB_OWNER`, else the owner of `GITHUB_REPOS` when all entries share one (an entry without `/` counts as an owner name), else `LanNguyenSi` | GitHub user/org to scan |
 | `limit` | int or `"all"` | `10` | Page size (1 to 100) or `"all"` to disable pagination |
 | `page` | int | `1` | Page number, must be >= 1 |
 | `sort` | string | `updated` | `updated`, `stars`, `name`, `ci_status` |

@@ -98,7 +98,7 @@ requires Node >= 22 and trips `EBADENGINE` under this repo's Node 20 CI leg.
 ```bash
 npm install
 npm test              # or: npm run test --workspaces --if-present
-make lint             # the same lint and type-check steps as CI (both workspaces)
+make lint             # the same lint and type-check steps as CI (dashboard and gateway)
 npm run build
 ```
 

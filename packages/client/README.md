@@ -100,7 +100,7 @@ Environment variables:
 - `AGENT_OPS_GATEWAY_URL`: overrides the default gateway URL (`http://localhost:3001`).
 - `AGENT_OPS_GATEWAY_TOKEN`: sets the Bearer token sent as `Authorization: Bearer <token>` on every gateway call. Required when the gateway has `GATEWAY_TOKEN` set (the default in production); without it, calls to a secured gateway fail with `401`.
 
-`agent-ops register` writes the resolved `gatewayUrl` and, if set, `gatewayToken` (unencrypted) together with `agentId` and `agentName` to `~/.agent-ops/config.json`. Values in that file take precedence over `AGENT_OPS_GATEWAY_URL` and `AGENT_OPS_GATEWAY_TOKEN`, so edit or delete the file after you change the gateway or rotate the token, and restrict the file's permissions. `agent-ops config` shows the values but cannot change them.
+`agent-ops register` writes the resolved `gatewayUrl` and, if set, `gatewayToken` (unencrypted) together with `agentId` and `agentName` to `~/.agent-ops/config.json`. Values in that file take precedence over `AGENT_OPS_GATEWAY_URL` and `AGENT_OPS_GATEWAY_TOKEN`, so edit or delete the file after you change the gateway or rotate the token, and restrict the file's permissions. `agent-ops config` shows the values (the token masked) but cannot change them.
 
 ## Documentation
 
