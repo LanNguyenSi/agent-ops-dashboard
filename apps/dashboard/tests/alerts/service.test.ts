@@ -13,7 +13,6 @@ vi.mock("@/lib/agents/client", () => ({
 }));
 
 import { getAlerts } from "@/lib/alerts/service";
-import { getMockAlerts } from "@/lib/alerts/mock-data";
 
 describe("getAlerts (live path)", () => {
   const prevRepos = process.env.GITHUB_REPOS;
@@ -35,9 +34,22 @@ describe("getAlerts (live path)", () => {
   it("returns only rule-generated alerts, with no sample alerts appended", async () => {
     const alerts = await getAlerts();
 
-    const mockIds = new Set(getMockAlerts().map((a) => a.id));
-    expect(alerts.filter((a) => mockIds.has(a.id))).toEqual([]);
     expect(alerts).toEqual([]);
+  });
+
+  it("returns no alerts, and reads no data source, when GITHUB_REPOS is unset", async () => {
+    delete process.env.GITHUB_REPOS;
+
+    await expect(getAlerts()).resolves.toEqual([]);
+    expect(getPipelineRuns).not.toHaveBeenCalled();
+  });
+
+  it("rethrows an evaluation failure instead of returning sample alerts", async () => {
+    getAgentSourceUrl.mockImplementation(() => {
+      throw new Error("config exploded");
+    });
+
+    await expect(getAlerts()).rejects.toThrow("config exploded");
   });
 
   it("does not call the agent source when it is not configured", async () => {

@@ -87,6 +87,7 @@ describe("GET /api/events/stream", () => {
     const raw = new EventEmitter() as any;
     raw.writeHead = vi.fn();
     raw.write = vi.fn();
+    raw.end = vi.fn();
     const req = { raw, query: {}, headers };
     const reply = { raw };
     return { req, reply, raw };
@@ -205,27 +206,63 @@ describe("GET /api/events/stream", () => {
     await handlerPromise;
   });
 
-  it("keeps the live stream running when the replay query fails", async () => {
+  it("ends the stream and drops the subscription when the replay query fails, so the client reconnects with its cursor", async () => {
     const { fastify, store } = makeFakeFastify();
     registerEventRoutes(fastify);
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     mockGetEventsSince.mockRejectedValue(new Error("db down"));
+    let capturedSubscriber: any;
+    const unsubscribe = vi.fn();
+    mockSubscribe.mockImplementation((sub: any) => {
+      capturedSubscriber = sub;
+      return unsubscribe;
+    });
+
+    const { req, reply, raw } = makeStreamReq({ "last-event-id": "1" });
+    // The handler returns on its own: nothing keeps the stream open.
+    await store["/api/events/stream"].handler(req, reply);
+
+    expect(raw.end).toHaveBeenCalledOnce();
+    expect(unsubscribe).toHaveBeenCalledOnce();
+    // An event emitted after the failure must not reach the client, or its
+    // cursor would move past the events the failed replay never delivered.
+    capturedSubscriber.send({ id: 9, eventType: "agent.heartbeat" });
+    expect(raw.write).not.toHaveBeenCalledWith("id: 9\n");
+    errSpy.mockRestore();
+  });
+
+  it("writes no frames after the client disconnects while the replay is in flight", async () => {
+    const { fastify, store } = makeFakeFastify();
+    registerEventRoutes(fastify);
+
+    let resolveReplay!: (events: unknown[]) => void;
+    mockGetEventsSince.mockReturnValue(
+      new Promise((resolve) => {
+        resolveReplay = resolve;
+      })
+    );
     let capturedSubscriber: any;
     mockSubscribe.mockImplementation((sub: any) => {
       capturedSubscriber = sub;
       return vi.fn();
     });
 
-    const { req, reply, raw } = makeStreamReq({ "last-event-id": "1" });
+    const { req, reply, raw } = makeStreamReq({ "last-event-id": "3" });
     const handlerPromise = store["/api/events/stream"].handler(req, reply);
     await flush();
 
-    capturedSubscriber.send({ id: 9, eventType: "agent.heartbeat" });
-    expect(raw.write).toHaveBeenCalledWith("id: 9\n");
-
+    capturedSubscriber.send({ id: 6, eventType: "agent.heartbeat" });
     raw.emit("close");
+    resolveReplay([
+      { id: 4, eventType: "agent.heartbeat" },
+      { id: 5, eventType: "agent.heartbeat" },
+    ]);
     await handlerPromise;
-    errSpy.mockRestore();
+
+    const idFrames = raw.write.mock.calls
+      .map((c: unknown[]) => c[0])
+      .filter((w: string) => w.startsWith("id: "));
+    expect(idFrames).toEqual([]);
   });
 
   it("subscribes immediately and never queries when no last-event-id is sent", async () => {

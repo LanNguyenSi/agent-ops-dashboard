@@ -21,7 +21,7 @@ describe("AgentBar data sources", () => {
     vi.unstubAllGlobals();
   });
 
-  it("shows the not-configured reason, and no agents, when the gateway proxy fails and /api/agents answers 503", async () => {
+  it("shows no agents when the gateway proxy fails and /api/agents answers 503", async () => {
     fetchMock.mockImplementation((url: string) =>
       url === "/api/gateway/agents"
         ? Promise.resolve(res(502, { error: "Gateway 401" }))
@@ -32,10 +32,35 @@ describe("AgentBar data sources", () => {
 
     render(<AgentBar />);
 
-    await waitFor(() =>
-      expect(screen.getByText(/Agent source not configured/)).toBeTruthy(),
-    );
+    await waitFor(() => expect(screen.getByText(/Gateway agents unavailable/)).toBeTruthy());
     expect(screen.queryByText(/Agents?$/)).toBeNull();
+  });
+
+  it("names the gateway failure when the fallback is not configured", async () => {
+    fetchMock.mockImplementation((url: string) =>
+      url === "/api/gateway/agents"
+        ? Promise.resolve(res(502, { error: "Gateway 401" }))
+        : Promise.resolve(
+            res(503, { error: "Agent source not configured: set TRIOLOGUE_HEALTH_URL", code: "NOT_CONFIGURED" }),
+          ),
+    );
+
+    render(<AgentBar />);
+
+    await waitFor(() => expect(screen.getByText("Gateway agents unavailable (502)")).toBeTruthy());
+    expect(screen.queryByText(/Agent source not configured/)).toBeNull();
+  });
+
+  it("shows the fallback's own reason when it is configured but fails", async () => {
+    fetchMock.mockImplementation((url: string) =>
+      url === "/api/gateway/agents"
+        ? Promise.resolve(res(502, { error: "Gateway 401" }))
+        : Promise.resolve(res(502, { error: "Triologue health failed", code: "UPSTREAM_FAILED" })),
+    );
+
+    render(<AgentBar />);
+
+    await waitFor(() => expect(screen.getByText("Triologue health failed")).toBeTruthy());
   });
 
   it("falls back to a generic error when /api/agents gives no readable reason", async () => {

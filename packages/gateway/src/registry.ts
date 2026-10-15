@@ -71,7 +71,8 @@ export class AgentRegistry {
     this.agents.delete(id);
     this.saveToDisk();
     this.emit(agent, 'agent:deleted');
-    this.recordDisconnect(agent, 'deleted');
+    // An agent already marked offline has had its disconnect recorded.
+    if (agent.status !== 'offline') this.recordDisconnect(agent, 'deleted');
     return true;
   }
 

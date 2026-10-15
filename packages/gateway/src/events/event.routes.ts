@@ -88,14 +88,20 @@ export function registerEventRoutes(
         }
       }
     } catch (err) {
-      // A failed replay must not take the live stream down with it.
-      console.error("[events] replay failed:", err);
-    } finally {
-      replaying = false;
-      for (const event of buffered.splice(0)) {
-        if (closed) break;
-        if (!sentIds.has(event.id)) sendSSEEvent(reply, event);
-      }
+      // Going live after a failed replay would let the client advance its
+      // cursor past the gap. End the stream instead: the client reconnects with
+      // backoff and the same Last-Event-ID, and the replay is retried.
+      console.error("[events] replay failed, ending stream so the client retries:", err);
+      buffered.length = 0;
+      clearInterval(keepAlive);
+      unsubscribe();
+      if (!closed) reply.raw.end();
+      return;
+    }
+    replaying = false;
+    for (const event of buffered.splice(0)) {
+      if (closed) break;
+      if (!sentIds.has(event.id)) sendSSEEvent(reply, event);
     }
 
     // Keep handler open

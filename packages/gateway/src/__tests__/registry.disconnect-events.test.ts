@@ -59,6 +59,19 @@ describe('AgentRegistry durable agent.disconnected events', () => {
     });
   });
 
+  it('records exactly one agent.disconnected when an offline agent is then deleted', async () => {
+    vi.useFakeTimers();
+    const emit = vi.spyOn(eventService, 'emit').mockResolvedValue({} as never);
+    const registry = new AgentRegistry();
+    const agent = registry.register({ name: 'probe-4' });
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    registry.delete(agent.id);
+
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(emit).toHaveBeenCalledWith('agent.disconnected', agent.id, expect.objectContaining({ reason: 'offline' }));
+  });
+
   it('does not record a disconnect for a heartbeat or when deleting an unknown id', () => {
     vi.useFakeTimers();
     const emit = vi.spyOn(eventService, 'emit').mockResolvedValue({} as never);

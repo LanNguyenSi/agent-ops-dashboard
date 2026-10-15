@@ -157,6 +157,6 @@ The prod compose file does not set `DATABASE_URL`, so unless you supply one (for
 | Activity Feed | Live | SSE stream; `Last-Event-ID` replay, also used by the dashboard view through the proxy's `cursor` parameter |
 | Shared State Store | Live | Namespaced KV with atomic CAS |
 | GitHub Repo Health | Live | All owner repos, CI status, filtering, sorting |
-| Alerts | API only | `GET /api/alerts` evaluates rules over pipeline runs and agent activity (when `TRIOLOGUE_HEALTH_URL` is set); sample alerts only when `GITHUB_REPOS` is unset; no UI; acknowledge and resolve are not implemented |
+| Alerts | API only | `GET /api/alerts` evaluates rules over pipeline runs and agent activity (when `TRIOLOGUE_HEALTH_URL` is set); empty when `GITHUB_REPOS` is unset, a failure answers `500`, never sample alerts; no UI; acknowledge and resolve are not implemented |
 | Pipeline Monitoring | API only | `/api/pipeline/runs`, `/stats`, `/trends`; sample data when `GITHUB_REPOS` is unset; no dashboard panel |
 | MCP Integration | Live | See [packages/mcp/](../packages/mcp/README.md) (published as `@opentriologue/mcp`) |
