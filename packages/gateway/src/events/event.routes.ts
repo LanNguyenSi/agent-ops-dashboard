@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply, preHandlerHookHandler } from "fastify";
-import { eventService } from "./event.service.js";
+import { eventService, type AgentEvent } from "./event.service.js";
 
 function sendSSEEvent(reply: FastifyReply, event: { id: number; eventType: string }): void {
   reply.raw.write(`id: ${event.id}\n`);
@@ -44,40 +44,66 @@ export function registerEventRoutes(
     const { agentId, eventType } = req.query as Record<string, string>;
     const lastEventId = req.headers["last-event-id"];
 
-    // Replay missed events on reconnect
-    if (lastEventId) {
-      const cursor = parseInt(String(lastEventId));
-      if (!isNaN(cursor)) {
-        const missed = await eventService.getEventsSince(cursor, { agentId, eventType });
-        for (const event of missed) {
-          sendSSEEvent(reply, event);
-        }
-      }
-    }
+    // Subscribe BEFORE the replay query. An event emitted while the query is
+    // in flight is buffered here and flushed after the replay, so it is neither
+    // lost nor delivered twice (the replay and the buffer are de-duplicated by
+    // id).
+    let replaying = true;
+    let closed = false;
+    const buffered: AgentEvent[] = [];
+    const unsubscribe = eventService.subscribe({
+      matches: (event) =>
+        (!agentId || event.agentId === agentId) &&
+        (!eventType || event.eventType === eventType),
+      send: (event) => {
+        if (replaying) buffered.push(event);
+        else sendSSEEvent(reply, event);
+      },
+    });
 
     // Send keepalive comment every 30s
     const keepAlive = setInterval(() => {
       reply.raw.write(": heartbeat\n\n");
     }, 30_000);
 
-    // Subscribe to live events
-    const unsubscribe = eventService.subscribe({
-      matches: (event) =>
-        (!agentId || event.agentId === agentId) &&
-        (!eventType || event.eventType === eventType),
-      send: (event) => sendSSEEvent(reply, event),
-    });
-
     // Cleanup on disconnect
     req.raw.on("close", () => {
+      closed = true;
       clearInterval(keepAlive);
       unsubscribe();
     });
 
+    // Replay missed events on reconnect
+    const sentIds = new Set<number>();
+    try {
+      if (lastEventId) {
+        const cursor = parseInt(String(lastEventId));
+        if (!isNaN(cursor)) {
+          const missed = await eventService.getEventsSince(cursor, { agentId, eventType });
+          for (const event of missed) {
+            if (closed) break;
+            sentIds.add(event.id);
+            sendSSEEvent(reply, event);
+          }
+        }
+      }
+    } catch (err) {
+      // A failed replay must not take the live stream down with it.
+      console.error("[events] replay failed:", err);
+    } finally {
+      replaying = false;
+      for (const event of buffered.splice(0)) {
+        if (closed) break;
+        if (!sentIds.has(event.id)) sendSSEEvent(reply, event);
+      }
+    }
+
     // Keep handler open
-    await new Promise<void>((resolve) => {
-      req.raw.on("close", resolve);
-    });
+    if (!closed) {
+      await new Promise<void>((resolve) => {
+        req.raw.on("close", resolve);
+      });
+    }
   });
 
   // GET /api/events/stats — quick stats

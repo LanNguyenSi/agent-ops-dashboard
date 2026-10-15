@@ -32,6 +32,10 @@ function makeFakeFastify() {
   return { fastify: fastify as any, store };
 }
 
+const flush = async () => {
+  for (let i = 0; i < 10; i++) await Promise.resolve();
+};
+
 function makeReply() {
   return {
     send: vi.fn((body: unknown) => body),
@@ -109,8 +113,7 @@ describe("GET /api/events/stream", () => {
 
     const handlerPromise = store["/api/events/stream"].handler(req, reply);
     // Let the replay's await eventService.getEventsSince(...) resolve.
-    await Promise.resolve();
-    await Promise.resolve();
+    await flush();
 
     expect(raw.writeHead).toHaveBeenCalledWith(
       200,
@@ -147,10 +150,100 @@ describe("GET /api/events/stream", () => {
     const { req, reply, raw } = makeStreamReq({ "last-event-id": "not-a-number" });
 
     const handlerPromise = store["/api/events/stream"].handler(req, reply);
-    await Promise.resolve();
-    await Promise.resolve();
+    await flush();
 
     expect(mockGetEventsSince).not.toHaveBeenCalled();
+
+    raw.emit("close");
+    await handlerPromise;
+  });
+
+  it("subscribes before the replay query and delivers an event emitted during the query exactly once", async () => {
+    const { fastify, store } = makeFakeFastify();
+    registerEventRoutes(fastify);
+
+    let resolveReplay!: (events: unknown[]) => void;
+    mockGetEventsSince.mockReturnValue(
+      new Promise((resolve) => {
+        resolveReplay = resolve;
+      })
+    );
+    let capturedSubscriber: any;
+    mockSubscribe.mockImplementation((sub: any) => {
+      capturedSubscriber = sub;
+      return vi.fn();
+    });
+
+    const { req, reply, raw } = makeStreamReq({ "last-event-id": "3" });
+    const handlerPromise = store["/api/events/stream"].handler(req, reply);
+    await flush();
+
+    // The replay query is still in flight, the subscriber must already exist.
+    expect(mockGetEventsSince).toHaveBeenCalledOnce();
+    expect(capturedSubscriber).toBeDefined();
+
+    // Event 5 is emitted while the query runs and is ALSO part of the result
+    // (it was committed before the SELECT ran); event 6 is only live.
+    capturedSubscriber.send({ id: 5, eventType: "agent.heartbeat" });
+    capturedSubscriber.send({ id: 6, eventType: "agent.heartbeat" });
+    expect(raw.write).not.toHaveBeenCalledWith("id: 5\n");
+
+    resolveReplay([
+      { id: 4, eventType: "agent.heartbeat" },
+      { id: 5, eventType: "agent.heartbeat" },
+    ]);
+    await flush();
+
+    const idFrames = raw.write.mock.calls.map((c: unknown[]) => c[0]).filter((w: string) => w.startsWith("id: "));
+    expect(idFrames).toEqual(["id: 4\n", "id: 5\n", "id: 6\n"]);
+
+    // After the replay, live events go straight through.
+    capturedSubscriber.send({ id: 7, eventType: "agent.heartbeat" });
+    expect(raw.write).toHaveBeenCalledWith("id: 7\n");
+
+    raw.emit("close");
+    await handlerPromise;
+  });
+
+  it("keeps the live stream running when the replay query fails", async () => {
+    const { fastify, store } = makeFakeFastify();
+    registerEventRoutes(fastify);
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    mockGetEventsSince.mockRejectedValue(new Error("db down"));
+    let capturedSubscriber: any;
+    mockSubscribe.mockImplementation((sub: any) => {
+      capturedSubscriber = sub;
+      return vi.fn();
+    });
+
+    const { req, reply, raw } = makeStreamReq({ "last-event-id": "1" });
+    const handlerPromise = store["/api/events/stream"].handler(req, reply);
+    await flush();
+
+    capturedSubscriber.send({ id: 9, eventType: "agent.heartbeat" });
+    expect(raw.write).toHaveBeenCalledWith("id: 9\n");
+
+    raw.emit("close");
+    await handlerPromise;
+    errSpy.mockRestore();
+  });
+
+  it("subscribes immediately and never queries when no last-event-id is sent", async () => {
+    const { fastify, store } = makeFakeFastify();
+    registerEventRoutes(fastify);
+    let capturedSubscriber: any;
+    mockSubscribe.mockImplementation((sub: any) => {
+      capturedSubscriber = sub;
+      return vi.fn();
+    });
+
+    const { req, reply, raw } = makeStreamReq();
+    const handlerPromise = store["/api/events/stream"].handler(req, reply);
+    await flush();
+
+    expect(mockGetEventsSince).not.toHaveBeenCalled();
+    capturedSubscriber.send({ id: 1, eventType: "agent.registered" });
+    expect(raw.write).toHaveBeenCalledWith("id: 1\n");
 
     raw.emit("close");
     await handlerPromise;

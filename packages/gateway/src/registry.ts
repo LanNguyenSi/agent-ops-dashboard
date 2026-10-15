@@ -1,5 +1,6 @@
 import { Agent, AgentStatus, RegisterPayload, HeartbeatPayload, RegistryEventType } from './types.js';
 import { randomUUID } from 'crypto';
+import { eventService, EVENT_TYPES } from './events/event.service.js';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -70,6 +71,7 @@ export class AgentRegistry {
     this.agents.delete(id);
     this.saveToDisk();
     this.emit(agent, 'agent:deleted');
+    this.recordDisconnect(agent, 'deleted');
     return true;
   }
 
@@ -83,6 +85,17 @@ export class AgentRegistry {
     }
   }
 
+  /** Append agent.disconnected to the durable event log; never blocks or throws. */
+  private recordDisconnect(agent: Agent, reason: 'offline' | 'deleted') {
+    eventService
+      .emit(EVENT_TYPES.AGENT_DISCONNECTED, agent.id, {
+        agentId: agent.id,
+        name: agent.name,
+        reason,
+      })
+      .catch(() => {});
+  }
+
   private resetTimer(id: string) {
     const existing = this.timers.get(id);
     if (existing) clearTimeout(existing);
@@ -94,6 +107,7 @@ export class AgentRegistry {
         this.agents.set(id, offline);
         this.saveToDisk();
         this.emit(offline, 'agent:offline');
+        this.recordDisconnect(offline, 'offline');
       }
     }, OFFLINE_TIMEOUT_MS);
 

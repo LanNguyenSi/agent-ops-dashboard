@@ -4,7 +4,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { registerAgentTools } from "../tools/agents.js";
 import { registerStateTools } from "../tools/state.js";
-import type { GatewayClient } from "../client.js";
+import { GatewayClient as GatewayClientImpl, type GatewayClient } from "../client.js";
 import type { Config } from "../config.js";
 
 /**
@@ -138,6 +138,34 @@ describe("packages/mcp real McpServer runtime (no SDK mocks)", () => {
     expect(data.status).toBe("online");
     expect(data.agentId).toBe("default-agent");
     expect(gatewayClient.sendHeartbeat).toHaveBeenCalledWith("default-agent", "online");
+  });
+
+  it("ops_heartbeat reports success:false when the gateway answers 404 for an unknown agent", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      status: 404,
+      json: () => Promise.resolve({ error: "Agent not found" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const realClient = new GatewayClientImpl(makeConfig());
+      const { client } = await connectRealServerAndClient(makeConfig(), realClient);
+
+      const result = (await client.callTool({
+        name: "ops_heartbeat",
+        arguments: { agentId: "ghost" },
+      })) as ToolCallResult;
+
+      expect(result.isError).toBe(true);
+      const data = JSON.parse(result.content[0].text);
+      expect(data.success).toBe(false);
+      expect(data.error).toBe("Agent not found: ghost");
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://gateway:3001/agents/ghost/heartbeat",
+        expect.objectContaining({ method: "POST" }),
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it.each([

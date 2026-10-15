@@ -74,6 +74,7 @@ export function AgentBar() {
           return;
         }
       } catch {}
+      let message = "Could not reach agent data source";
       try {
         const res = await fetch("/api/agents");
         if (res.ok) {
@@ -83,8 +84,13 @@ export function AgentBar() {
           setLoading(false);
           return;
         }
+        // 503 = no agent source configured, 502 = the source failed. Show the
+        // server's reason instead of inventing agents.
+        const body = await res.json().catch(() => null);
+        if (body && typeof body.error === "string") message = body.error;
       } catch {}
-      setError("Could not reach agent data source");
+      setActivity(null);
+      setError(message);
       setLoading(false);
     }
 

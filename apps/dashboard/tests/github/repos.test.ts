@@ -86,6 +86,33 @@ describe("getRepoHealth", () => {
     });
   });
 
+  it("maps an in-progress latest run to pending and asks GitHub for runs of any status", async () => {
+    mockOctokit.repos.get.mockResolvedValue({
+      data: {
+        default_branch: "main",
+        html_url: "https://github.com/test/repo",
+        updated_at: "2024-01-01T00:00:00Z",
+      },
+    });
+    mockOctokit.pulls.list.mockResolvedValue({ data: [] });
+    mockOctokit.actions.listWorkflowRunsForRepo.mockResolvedValue({
+      data: {
+        workflow_runs: [
+          { id: 2, name: "CI", status: "in_progress", conclusion: null, head_branch: "main" },
+        ],
+      },
+    });
+    mockOctokit.checks.listForRef.mockResolvedValue({ data: { check_runs: [] } });
+    mockOctokit.request.mockResolvedValue({ data: [] });
+
+    const health = await getRepoHealth("test", "repo");
+
+    expect(health.ci_status).toBe("pending");
+    const args = mockOctokit.actions.listWorkflowRunsForRepo.mock.calls[0][0];
+    expect(args).not.toHaveProperty("status");
+    expect(args.per_page).toBe(1);
+  });
+
   it("gracefully ignores inaccessible dependabot alerts", async () => {
     mockOctokit.repos.get.mockResolvedValue({
       data: {

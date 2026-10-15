@@ -62,7 +62,8 @@ services:
       - GATEWAY_TOKEN=${GATEWAY_TOKEN:-}
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       - GITHUB_OWNER=${GITHUB_OWNER:-LanNguyenSi}
-      - GITHUB_REPOS=${GITHUB_REPOS:-agent-preflight,triologue,frost-core,frost-dashboard,agent-planforge,scaffoldkit,memory-weaver,allergen-guard,plagiarism-coach,agent-dx}
+      - GITHUB_REPOS=${GITHUB_REPOS:-LanNguyenSi/agent-preflight,LanNguyenSi/triologue,LanNguyenSi/frost-core,LanNguyenSi/frost-dashboard,LanNguyenSi/agent-planforge,LanNguyenSi/scaffoldkit,LanNguyenSi/memory-weaver,LanNguyenSi/allergen-guard,LanNguyenSi/plagiarism-coach,LanNguyenSi/agent-dx}
+      - TRIOLOGUE_HEALTH_URL=${TRIOLOGUE_HEALTH_URL:-}
     depends_on:
       - gateway
     restart: unless-stopped

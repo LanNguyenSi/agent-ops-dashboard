@@ -23,6 +23,7 @@ Both the gateway and the dashboard read configuration from environment variables
 | `GATEWAY_TOKEN` | (none) | Bearer token the dashboard attaches to its server-side gateway calls. Must match the gateway's `GATEWAY_TOKEN`, otherwise the `/api/gateway/*` proxies get `401`/`503`. |
 | `GITHUB_TOKEN` | (required for repo health) | GitHub personal access token; see [GitHub token](#github-token) for the access it needs |
 | `GITHUB_OWNER` | (none; `docker-compose.yml` sets `LanNguyenSi`) | Default GitHub user/org for the repo-health dashboard. When unset, the owner of `GITHUB_REPOS` is used when all entries share one, else `LanNguyenSi` |
+| `TRIOLOGUE_HEALTH_URL` | (none) | Triologue health endpoint (for example `https://triologue.example/gateway/health`) that `/api/agents` and the agent alert rules read. When unset, `/api/agents` answers `503 NOT_CONFIGURED`, the agent rules see no agents, and the dashboard makes no outbound request to Triologue; when set but failing, `/api/agents` answers `502`. No mock agents are ever returned |
 | `GITHUB_REPOS` | (none; the compose files set a default list) | Comma-separated `owner/repo` pairs. Used by pipeline monitoring, `/api/github/checks`, `/api/github/prs` and alerts; pipeline monitoring skips entries that are not `owner/repo` pairs. When all entries share one owner it also sets the default owner for repo health; there an entry without `/` counts as an owner name |
 
 ### Compose-level
@@ -45,7 +46,7 @@ Without `GITHUB_TOKEN` the gateway and agent registry still work, but the repo-h
 
 Two `.env.example` files ship in the repo:
 
-- `.env.example`: the minimal set for local development (`GITHUB_TOKEN`, `GITHUB_REPOS`, `GATEWAY_TOKEN`, and `GATEWAY_ALLOWED_ORIGINS`).
+- `.env.example`: the minimal set for local development (`GITHUB_TOKEN`, `GITHUB_REPOS`, `GATEWAY_TOKEN`, and `GATEWAY_ALLOWED_ORIGINS`, plus a commented-out optional `TRIOLOGUE_HEALTH_URL`).
 - `.env.production.example`: the full production set, including `NODE_ENV` and the gateway auth settings (`GATEWAY_TOKEN`, `GATEWAY_ALLOWED_ORIGINS`).
 
 Copy whichever you need to `.env` and fill in real values:
@@ -73,10 +74,11 @@ The Makefile wraps the common deploy commands:
 make deploy              # docker compose -f docker-compose.prod.yml up -d --build
 make deploy-pull         # git pull origin master && deploy
 make logs                # tail production logs
-make health              # curl localhost:3000/api/health (default compose or dev loop; needs jq)
+make health              # curl -fsS localhost:3000/api/health (default compose or dev loop)
+make health-gateway      # curl -fsS 127.0.0.1:3001/health (default and prod compose)
 ```
 
-`docker-compose.prod.yml` publishes no dashboard port, so `make health` does not reach the dashboard on a prod host. There, check the gateway with `curl -s http://127.0.0.1:3001/health`, or the dashboard from inside its container with `docker compose -f docker-compose.prod.yml exec app node -e "fetch('http://127.0.0.1:3000/api/health').then(r => r.text()).then(console.log)"`.
+Both health targets exit non-zero and print `Health check failed: ...` to stderr when the endpoint does not answer with a success status; `jq` pretty-prints the body when it is installed. Override the address with `make health DASHBOARD_URL=http://host:3000` or `make health-gateway GATEWAY_URL=http://host:3001`. `docker-compose.prod.yml` publishes no dashboard port, so `make health` does not reach the dashboard on a prod host. There, run `make health-gateway`, or the dashboard from inside its container with `docker compose -f docker-compose.prod.yml exec app node -e "fetch('http://127.0.0.1:3000/api/health').then(r => r.text()).then(console.log)"`.
 
 Notes:
 
@@ -89,5 +91,5 @@ Notes:
 
 - `503 GATEWAY_TOKEN_NOT_CONFIGURED` from the gateway: the gateway process has no `GATEWAY_TOKEN`.
 - `401 UNAUTHORIZED` from the gateway: the Bearer token is missing or does not match the gateway's `GATEWAY_TOKEN`.
-- `/api/state/*` or `/api/events*` return `404` while `DATABASE_URL` is set: the database connection or a migration failed at startup (log line `[db] Failed to initialize DB features`), so the gateway registered neither the state nor the event routes. The registry keeps working. Fix the database and restart the gateway; it does not retry.
-- The dashboard's `/api/gateway/agents` proxies (list, register, heartbeat) return `502`: `GATEWAY_INTERNAL_URL` does not reach the gateway. The list proxy also answers `502` when the gateway rejects its token; the error then reads `Gateway 401` or `Gateway 503`. While the list proxy fails, the agent bar falls back to `/api/agents`, which does not read this repo's gateway.
+- `/api/state/*` returns `404` while `DATABASE_URL` is set: the database connection or a migration failed at startup (log line `[db] Failed to initialize DB features`), so the gateway registered no state routes. The registry keeps working. The event routes are still registered, but event writes fail while the database is unreachable: `GET /api/events` returns an error and `/api/events/stream` connects without delivering new events. Fix the database and restart the gateway; it does not retry.
+- The dashboard's `/api/gateway/agents` proxies (list, register, heartbeat) return `502`: `GATEWAY_INTERNAL_URL` does not reach the gateway. The list proxy also answers `502` when the gateway rejects its token; the error then reads `Gateway 401` or `Gateway 503`. While the list proxy fails, the agent bar falls back to `/api/agents`, which does not read this repo's gateway; without `TRIOLOGUE_HEALTH_URL` the bar then shows the `Agent source not configured` message instead of agents.

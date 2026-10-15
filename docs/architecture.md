@@ -80,7 +80,7 @@ Next.js 16 App Router. The `/app/api/*` routes do three jobs:
 
 Browser components subscribe to `/api/gateway/events/stream` for the activity feed, poll `/api/gateway/agents` every 15s for the agent bar (falling back to `/api/agents`), and fetch `/api/github/repos` on load and when filters change (`Sync` calls `POST /api/github/sync` first).
 
-`/api/agents` does not read this repo's gateway: it fetches the hard-coded Triologue health endpoint (`https://opentriologue.ai/gateway/health`) and returns mock agents when that request fails. A self-hosted dashboard therefore makes outbound requests to that host whenever the agent bar falls back to `/api/agents` or `/api/alerts` evaluates its agent rules.
+`/api/agents` does not read this repo's gateway: it fetches the Triologue health endpoint named by `TRIOLOGUE_HEALTH_URL`. With the variable unset it answers `503` and the dashboard makes no outbound request to Triologue; if the endpoint fails it answers `502`. It never returns mock agents.
 
 ### PostgreSQL
 
@@ -154,9 +154,9 @@ The prod compose file does not set `DATABASE_URL`, so unless you supply one (for
 | Feature | Status | Notes |
 |---|---|---|
 | Agent Registry | Live | Register, heartbeat, auto-offline after 60s |
-| Activity Feed | Live | SSE stream; `Last-Event-ID` replay for direct gateway clients (not used by the dashboard view) |
+| Activity Feed | Live | SSE stream; `Last-Event-ID` replay, also used by the dashboard view through the proxy's `cursor` parameter |
 | Shared State Store | Live | Namespaced KV with atomic CAS |
 | GitHub Repo Health | Live | All owner repos, CI status, filtering, sorting |
-| Alerts | API only | `GET /api/alerts` evaluates rules over pipeline runs and agent activity and always appends sample alerts; no UI; acknowledge and resolve are not implemented |
+| Alerts | API only | `GET /api/alerts` evaluates rules over pipeline runs and agent activity (when `TRIOLOGUE_HEALTH_URL` is set); sample alerts only when `GITHUB_REPOS` is unset; no UI; acknowledge and resolve are not implemented |
 | Pipeline Monitoring | API only | `/api/pipeline/runs`, `/stats`, `/trends`; sample data when `GITHUB_REPOS` is unset; no dashboard panel |
 | MCP Integration | Live | See [packages/mcp/](../packages/mcp/README.md) (published as `@opentriologue/mcp`) |

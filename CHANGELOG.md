@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- The activity page now replays the events it missed while disconnected: the stream proxy maps the hook's `?cursor=` to the gateway's `Last-Event-ID`, and answers `502` with a JSON error instead of throwing when the gateway is unreachable.
+- The gateway subscribes to live events before the replay query on `/api/events/stream` and de-duplicates by id, so an event emitted during the replay is no longer lost.
+- A failed database migration no longer removes the `/api/events*` routes; only the state routes depend on a migrated database.
+- `ops_heartbeat` (MCP) reports a failure instead of `success: true` when the gateway answers `404` or another non-2xx status for the heartbeat.
+- The pending CI status of repo health is reachable: the latest workflow run is requested whatever its status.
+- `make health` exits non-zero and prints `Health check failed` when the endpoint does not answer; its help text no longer claims to check production. New `make health-gateway`. The `docker-up` and `dev-docker` help text now says they start no gateway.
+- The default `GITHUB_REPOS` in `docker-compose.yml` uses `owner/repo` pairs.
+
+### Changed
+
+- The gateway records `agent.disconnected` in the durable event log when an agent goes offline or is deleted (payload `{ agentId, name, reason }`).
+- `/api/agents` reads the Triologue health URL from the new `TRIOLOGUE_HEALTH_URL` variable instead of a hard-coded host. Unset, it answers `503` (`NOT_CONFIGURED`); on failure it answers `502` (`UPSTREAM_FAILED`) instead of returning mock agents. `/api/alerts` no longer appends two sample alerts to the rule-generated ones. Operators who relied on the old host must set `TRIOLOGUE_HEALTH_URL`.
+
 ### Security
 
 - **next 16.3.8** (GHSA-3w37-wq28-93x7, GHSA-4jqv-mc3x-m676, GHSA-39w2-rjm5-chcv, GHSA-f87g-xv8r-7p7x, GHSA-mcj8-r9mp-w47p, GHSA-cjq9-62q9-8jv4): the lockfile resolves 16.3.8 with its matching `@next/env` and `@next/swc-*` packages and the `next` dependency floor is now `^16.3.8`.

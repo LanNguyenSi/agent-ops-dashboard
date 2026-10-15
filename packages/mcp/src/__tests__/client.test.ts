@@ -65,6 +65,18 @@ describe("GatewayClient.sendHeartbeat", () => {
   });
 });
 
+describe("GatewayClient.sendHeartbeat failures", () => {
+  it("throws Agent not found when the gateway answers 404", async () => {
+    mockResponse({ error: "Agent not found" }, 404);
+    await expect(client.sendHeartbeat("ghost")).rejects.toThrow("Agent not found: ghost");
+  });
+
+  it("throws with the status and body on any other non-2xx answer", async () => {
+    mockResponse({ error: "UNAUTHORIZED" }, 401);
+    await expect(client.sendHeartbeat("a1")).rejects.toThrow(/Heartbeat failed \(401\).*UNAUTHORIZED/);
+  });
+});
+
 describe("GatewayClient state methods", () => {
   it("getState returns null on 404", async () => {
     mockResponse({ error: "NOT_FOUND" }, 404);
