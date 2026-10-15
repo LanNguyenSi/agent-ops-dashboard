@@ -46,7 +46,15 @@ export class GatewayClient {
   }
 
   async sendHeartbeat(agentId: string, status = "online"): Promise<void> {
-    await this.request("POST", `/agents/${agentId}/heartbeat`, { status });
+    const { data, status: httpStatus } = await this.request(
+      "POST",
+      `/agents/${agentId}/heartbeat`,
+      { status }
+    );
+    if (httpStatus === 404) throw new Error(`Agent not found: ${agentId}`);
+    if (httpStatus < 200 || httpStatus >= 300) {
+      throw new Error(`Heartbeat failed (${httpStatus}): ${JSON.stringify(data)}`);
+    }
   }
 
   async getAgent(agentId: string): Promise<Agent> {

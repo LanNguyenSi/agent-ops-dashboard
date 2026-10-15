@@ -5,6 +5,7 @@
  * Bearer token so browsers (whose EventSource API can't set headers) can stream
  * authenticated events.
  */
+import { NextResponse } from "next/server";
 import { gatewayFetch } from "@/lib/gateway/client";
 
 export const dynamic = "force-dynamic";
@@ -15,14 +16,25 @@ export async function GET(req: Request) {
   if (searchParams.get("agentId")) params.set("agentId", searchParams.get("agentId")!);
   if (searchParams.get("eventType")) params.set("eventType", searchParams.get("eventType")!);
 
-  const lastEventId = req.headers.get("last-event-id");
+  // A native EventSource reconnect sends Last-Event-ID itself; the activity
+  // hook closes its EventSource on error and reconnects by hand, passing the
+  // last seen id as `?cursor=`. Both end up as the gateway's Last-Event-ID.
+  const cursor = searchParams.get("cursor");
+  const lastEventId =
+    req.headers.get("last-event-id") ?? (cursor && /^\d+$/.test(cursor) ? cursor : null);
   const headers: Record<string, string> = {};
   if (lastEventId) headers["last-event-id"] = lastEventId;
 
-  const upstream = await gatewayFetch(
-    `/api/events/stream${params.size ? `?${params}` : ""}`,
-    { headers, signal: req.signal },
-  );
+  let upstream: Response;
+  try {
+    upstream = await gatewayFetch(
+      `/api/events/stream${params.size ? `?${params}` : ""}`,
+      { headers, signal: req.signal },
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Gateway unreachable";
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
 
   // Upstream may have refused with 401/503 + JSON; in that case forward as-is
   // so the browser can read the actual error instead of an empty event stream.

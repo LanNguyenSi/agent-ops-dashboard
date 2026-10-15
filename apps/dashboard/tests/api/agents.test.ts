@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as agentsClient from '@/lib/agents/client';
+import { AgentSourceError, AgentSourceNotConfiguredError } from '@/lib/agents/client';
 import type { AgentActivity } from '@/lib/agents/types';
 
-vi.mock('@/lib/agents/client', () => ({
-  getAgentActivity: vi.fn(),
-}));
+vi.mock('@/lib/agents/client', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/agents/client')>('@/lib/agents/client');
+  return { ...actual, getAgentActivity: vi.fn() };
+});
 
 const mockGetAgentActivity = vi.mocked(agentsClient.getAgentActivity);
 
@@ -48,5 +50,31 @@ describe('GET /api/agents', () => {
 
     expect(res.status).toBe(500);
     await expect(res.json()).resolves.toEqual({ error: 'Failed to fetch agent activity' });
+  });
+
+  it('returns 503 with code NOT_CONFIGURED when no agent source is configured', async () => {
+    const { GET } = await import('@/app/api/agents/route');
+    mockGetAgentActivity.mockRejectedValue(new AgentSourceNotConfiguredError());
+
+    const res = await GET();
+
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.code).toBe('NOT_CONFIGURED');
+    expect(body.error).toContain('TRIOLOGUE_HEALTH_URL');
+    expect(body).not.toHaveProperty('agents');
+  });
+
+  it('returns 502 with code UPSTREAM_FAILED when the configured source fails', async () => {
+    const { GET } = await import('@/app/api/agents/route');
+    mockGetAgentActivity.mockRejectedValue(new AgentSourceError('Triologue API responded with 500'));
+
+    const res = await GET();
+
+    expect(res.status).toBe(502);
+    await expect(res.json()).resolves.toEqual({
+      error: 'Triologue API responded with 500',
+      code: 'UPSTREAM_FAILED',
+    });
   });
 });

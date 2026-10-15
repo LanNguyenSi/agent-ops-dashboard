@@ -119,11 +119,12 @@ Recorded event types (see `packages/gateway/src/events/event.service.ts`):
 
 ```
 agent.registered    agent.heartbeat
+agent.disconnected
 state.set           state.deleted
 state.cas.success   state.cas.conflict
 ```
 
-`agent.disconnected` is reserved as a constant but is not currently emitted to the durable event log; offline transitions surface only on the registry SSE stream as `agent:offline`.
+`agent.disconnected` is recorded whenever the registry marks an agent offline (no heartbeat for 60 seconds) or an agent is deleted (an agent deleted after it was marked offline is not recorded a second time). Its payload is `{ agentId, name, reason }` with `reason` set to `offline` or `deleted`. The registry SSE stream still announces the same transitions as `agent:offline` and `agent:deleted`.
 
 **Stream events:**
 
@@ -135,7 +136,7 @@ event: agent.heartbeat
 data: {"id":4821,"agentId":"8a7c1f1e-...","eventType":"agent.heartbeat","payload":{"status":"online"},"createdAt":"2026-04-28T12:00:30.000Z"}
 ```
 
-Each frame includes an `id`, `event` type, and JSON `data`. Reconnect with `Last-Event-ID: <last-seen-id>` to replay missed events: the gateway sends up to the first 200 events after that id (oldest first) and then switches to live frames. After a longer gap, page through `GET /api/events?cursor=<id>` for the rest. Replay needs `DATABASE_URL`. The dashboard's activity page does not send `Last-Event-ID` when it reconnects, so it shows only live events after a reconnect.
+Each frame includes an `id`, `event` type, and JSON `data`. Reconnect with `Last-Event-ID: <last-seen-id>` to replay missed events: the gateway sends up to the first 200 events after that id (oldest first) and then switches to live frames. After a longer gap, page through `GET /api/events?cursor=<id>` for the rest. Replay needs `DATABASE_URL`. The dashboard's activity page reconnects through `/api/gateway/events/stream?cursor=<last-seen-id>`; the proxy forwards `cursor` to the gateway as `Last-Event-ID` (a real `Last-Event-ID` header on the proxy request wins over `cursor`), so events emitted while the page was disconnected are replayed. The gateway subscribes to live events before it runs the replay query and de-duplicates by id, so an event emitted during the replay is delivered once. If the replay query fails, the gateway answers `503` with `{ error }` before writing any event-stream header, so the client sees a failed connection and retries with the same cursor. If the gateway cannot be reached the proxy answers `502` with `{ error }`.
 
 ## Dashboard: GitHub Repo Health
 
@@ -211,8 +212,8 @@ curl "https://ops.opentriologue.ai/api/github/repos?filter=failing&page=2"
 | Endpoint | Method | Description |
 |---|---|---|
 | `/api/health` | GET | Dashboard health check |
-| `/api/agents` | GET | Legacy agent list read from the Triologue health endpoint (`https://opentriologue.ai/gateway/health`, hard-coded), with mock data when that is unreachable; not backed by this repo's gateway. The agent bar uses it only as a fallback when `/api/gateway/agents` fails, and alert rules read it |
-| `/api/alerts` | GET | Alerts from rule evaluation plus built-in sample alerts; `includeStats=true` adds a `stats` object with counts by status |
+| `/api/agents` | GET | Legacy agent list read from the Triologue health endpoint named by `TRIOLOGUE_HEALTH_URL`; not backed by this repo's gateway. Answers `503` with `{ error, code: "NOT_CONFIGURED" }` when the variable is unset and `502` with `{ error, code: "UPSTREAM_FAILED" }` when the endpoint fails; it never returns mock agents. The agent bar uses it only as a fallback when `/api/gateway/agents` fails, and alert rules read it when it is configured |
+| `/api/alerts` | GET | Alerts from rule evaluation over pipeline runs and, when `TRIOLOGUE_HEALTH_URL` is set, agent activity (empty when `GITHUB_REPOS` is unset; a rule-evaluation failure answers `500`, never sample alerts); `includeStats=true` adds a `stats` object with counts by status |
 | `/api/pipeline/runs` | GET | Pipeline workflow runs; filters `repository`, `branch`, `status`, `startDate`, `endDate`, `limit` (default 50) |
 | `/api/pipeline/stats` | GET | Pipeline statistics |
 | `/api/pipeline/trends` | GET | Pipeline trends over time; `period` = `7d` (default), `30d` or `90d` |

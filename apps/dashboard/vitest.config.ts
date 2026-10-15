@@ -43,12 +43,16 @@ export default defineConfig({
         // 35.36). They do NOT reliably catch a single new/untested
         // app/api/**/route.ts handler: against ~1250 total statements, even
         // a 57-line uncovered handler barely dents the aggregate and still
-        // clears these floors. The per-glob floor below is what actually
-        // catches that case: it is set just under the measured per-file
-        // floor across the 15 existing route.ts handlers (88.23 stmts /
-        // 86.66 lines / 100 funcs / 50 branches), so any route.ts that
-        // ships without its own tests trips this threshold even when the
-        // repo-wide aggregate would not notice.
+        // clears these floors. The per-glob floor below is stricter for the
+        // route handlers but is also an aggregate: Vitest measures the
+        // `app/api/**/route.ts` glob over all matching handlers together
+        // (setting `perFile` on the glob entry changes nothing, checked
+        // against the 15 existing handlers), so it catches a drop in the
+        // handlers' combined coverage, not one untested handler hiding among
+        // well-covered ones. It is set just under the lowest per-file values
+        // measured across the existing handlers (88.23 stmts / 86.66 lines /
+        // 100 funcs / 50 branches). Review a new route.ts for its own tests;
+        // this threshold alone does not enforce them.
         lines: 46,
         statements: 45,
         functions: 45,

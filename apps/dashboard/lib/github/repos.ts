@@ -64,7 +64,6 @@ export async function getRepoHealth(owner: string, repo: string): Promise<RepoHe
         owner,
         repo,
         per_page: 1,
-        status: "completed",
       }),
       octokit.checks.listForRef({
         owner,

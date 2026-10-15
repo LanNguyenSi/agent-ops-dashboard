@@ -88,4 +88,65 @@ describe('GET /api/gateway/events/stream', () => {
     expect(res.headers.get('Content-Type')).toBe('application/json');
     await expect(res.text()).resolves.toBe('{"error":"unauthorized"}');
   });
+
+  it('maps the ?cursor= query param (sent by the activity hook) to the last-event-id header', async () => {
+    const { GET } = await import('@/app/api/gateway/events/stream/route');
+    mockGatewayFetch.mockResolvedValue(makeUpstream({ ok: true, status: 200 }));
+
+    const req = new Request('http://localhost/api/gateway/events/stream?agentId=a1&cursor=77');
+    await GET(req);
+
+    expect(mockGatewayFetch).toHaveBeenCalledWith(
+      '/api/events/stream?agentId=a1',
+      expect.objectContaining({ headers: { 'last-event-id': '77' } }),
+    );
+  });
+
+  it('prefers a real Last-Event-ID header over the cursor param', async () => {
+    const { GET } = await import('@/app/api/gateway/events/stream/route');
+    mockGatewayFetch.mockResolvedValue(makeUpstream({ ok: true, status: 200 }));
+
+    const req = new Request('http://localhost/api/gateway/events/stream?cursor=77', {
+      headers: { 'last-event-id': '90' },
+    });
+    await GET(req);
+
+    expect(mockGatewayFetch).toHaveBeenCalledWith(
+      '/api/events/stream',
+      expect.objectContaining({ headers: { 'last-event-id': '90' } }),
+    );
+  });
+
+  it('ignores a non-numeric cursor', async () => {
+    const { GET } = await import('@/app/api/gateway/events/stream/route');
+    mockGatewayFetch.mockResolvedValue(makeUpstream({ ok: true, status: 200 }));
+
+    const req = new Request('http://localhost/api/gateway/events/stream?cursor=abc');
+    await GET(req);
+
+    expect(mockGatewayFetch).toHaveBeenCalledWith(
+      '/api/events/stream',
+      expect.objectContaining({ headers: {} }),
+    );
+  });
+
+  it('answers 502 with a JSON error when the gateway is unreachable', async () => {
+    const { GET } = await import('@/app/api/gateway/events/stream/route');
+    mockGatewayFetch.mockRejectedValue(new Error('connect ECONNREFUSED'));
+
+    const res = await GET(new Request('http://localhost/api/gateway/events/stream'));
+
+    expect(res.status).toBe(502);
+    await expect(res.json()).resolves.toEqual({ error: 'connect ECONNREFUSED' });
+  });
+
+  it('falls back to a generic message when a non-Error is thrown', async () => {
+    const { GET } = await import('@/app/api/gateway/events/stream/route');
+    mockGatewayFetch.mockRejectedValue('boom');
+
+    const res = await GET(new Request('http://localhost/api/gateway/events/stream'));
+
+    expect(res.status).toBe(502);
+    await expect(res.json()).resolves.toEqual({ error: 'Gateway unreachable' });
+  });
 });

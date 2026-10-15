@@ -78,6 +78,7 @@ services:
       - GITHUB_REPOS=${GITHUB_REPOS:-LanNguyenSi/telerithm,LanNguyenSi/agent-ops-dashboard,LanNguyenSi/triologue,LanNguyenSi/scaffoldkit,LanNguyenSi/agent-planforge}
       - GATEWAY_INTERNAL_URL=http://agent-ops-gateway:3001
       - GATEWAY_TOKEN=${GATEWAY_TOKEN:-}
+      - TRIOLOGUE_HEALTH_URL=${TRIOLOGUE_HEALTH_URL:-}
     depends_on:
       - gateway
     networks:
