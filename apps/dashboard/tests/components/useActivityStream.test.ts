@@ -126,6 +126,63 @@ describe("useActivityStream", () => {
     expect(FakeEventSource.instances).toHaveLength(2);
   });
 
+  it("grows the reconnect delay when the stream opens and errors without a frame", () => {
+    vi.useFakeTimers();
+    renderHook(() => useActivityStream({}));
+
+    for (const delay of [1000, 2000, 4000]) {
+      const es = FakeEventSource.instances[FakeEventSource.instances.length - 1]!;
+      const before = FakeEventSource.instances.length;
+      act(() => {
+        es.emitOpen();
+        es.emitError();
+      });
+      act(() => {
+        vi.advanceTimersByTime(delay - 1);
+      });
+      expect(FakeEventSource.instances).toHaveLength(before);
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(FakeEventSource.instances).toHaveLength(before + 1);
+    }
+  });
+
+  it("resets the reconnect delay once a frame arrived", () => {
+    vi.useFakeTimers();
+    renderHook(() => useActivityStream({}));
+
+    // Two failures without a frame: the next delay would be 4s.
+    for (let i = 0; i < 2; i++) {
+      const es = FakeEventSource.instances[FakeEventSource.instances.length - 1]!;
+      act(() => {
+        es.emitOpen();
+        es.emitError();
+      });
+      act(() => {
+        vi.advanceTimersByTime(30_000);
+      });
+    }
+
+    const es = FakeEventSource.instances[FakeEventSource.instances.length - 1]!;
+    act(() => {
+      es.emitOpen();
+      es.emit("agent.registered", {
+        id: 1,
+        agentId: "a1",
+        eventType: "agent.registered",
+        payload: {},
+        createdAt: "2026-01-01T00:00:00Z",
+      });
+      es.emitError();
+    });
+    const before = FakeEventSource.instances.length;
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(FakeEventSource.instances).toHaveLength(before + 1);
+  });
+
   it("closes the EventSource on unmount", () => {
     const { unmount } = renderHook(() => useActivityStream({}));
     const es = FakeEventSource.instances[0]!;

@@ -92,10 +92,13 @@ export function useActivityStream(filters: ActivityFilters): UseActivityStreamRe
     es.onopen = () => {
       setIsConnected(true);
       setError(null);
-      reconnectAttemptsRef.current = 0;
+      // The backoff counter is NOT reset here: a response that opens and then
+      // errors without a frame must keep growing the delay. It resets on the
+      // first frame below.
     };
 
     const handleEvent = (event: MessageEvent) => {
+      reconnectAttemptsRef.current = 0;
       try {
         const data: AgentEvent = JSON.parse(event.data as string);
         lastEventIdRef.current = data.id;

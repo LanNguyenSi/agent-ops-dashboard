@@ -33,14 +33,6 @@ export function registerEventRoutes(
 
   // GET /api/events/stream — SSE live stream
   fastify.get("/api/events/stream", guard, async (req, reply) => {
-    reply.raw.writeHead(200, {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      "Connection": "keep-alive",
-      "X-Accel-Buffering": "no",
-      // CORS handled by @fastify/cors (allowlist via GATEWAY_ALLOWED_ORIGINS).
-    });
-
     const { agentId, eventType } = req.query as Record<string, string>;
     const lastEventId = req.headers["last-event-id"];
 
@@ -61,55 +53,60 @@ export function registerEventRoutes(
       },
     });
 
-    // Send keepalive comment every 30s
-    const keepAlive = setInterval(() => {
-      reply.raw.write(": heartbeat\n\n");
-    }, 30_000);
-
     // Cleanup on disconnect
     req.raw.on("close", () => {
       closed = true;
-      clearInterval(keepAlive);
       unsubscribe();
     });
 
-    // Replay missed events on reconnect
+    // Run the replay BEFORE any SSE header is written. A failed replay answers
+    // 503 JSON (no event-stream headers): the browser's EventSource then errors
+    // without ever firing onopen, so the client's reconnect backoff keeps
+    // growing instead of resetting on every attempt. Going live after a failed
+    // replay would also let the client advance its cursor past the gap.
     const sentIds = new Set<number>();
+    let missed: AgentEvent[] = [];
     try {
       if (lastEventId) {
         const cursor = parseInt(String(lastEventId));
         if (!isNaN(cursor)) {
-          const missed = await eventService.getEventsSince(cursor, { agentId, eventType });
-          for (const event of missed) {
-            if (closed) break;
-            sentIds.add(event.id);
-            sendSSEEvent(reply, event);
-          }
+          missed = await eventService.getEventsSince(cursor, { agentId, eventType });
         }
       }
     } catch (err) {
-      // Going live after a failed replay would let the client advance its
-      // cursor past the gap. End the stream instead: the client reconnects with
-      // backoff and the same Last-Event-ID, and the replay is retried.
-      console.error("[events] replay failed, ending stream so the client retries:", err);
+      console.error("[events] replay failed, answering 503 so the client retries:", err);
       buffered.length = 0;
-      clearInterval(keepAlive);
       unsubscribe();
-      if (!closed) reply.raw.end();
-      return;
+      return reply.code(503).send({ error: "Event replay failed, retry" });
+    }
+
+    if (closed) return;
+    reply.raw.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive",
+      "X-Accel-Buffering": "no",
+      // CORS handled by @fastify/cors (allowlist via GATEWAY_ALLOWED_ORIGINS).
+    });
+    for (const event of missed) {
+      sentIds.add(event.id);
+      sendSSEEvent(reply, event);
     }
     replaying = false;
     for (const event of buffered.splice(0)) {
-      if (closed) break;
       if (!sentIds.has(event.id)) sendSSEEvent(reply, event);
     }
 
+    // Send keepalive comment every 30s
+    const keepAlive = setInterval(() => {
+      reply.raw.write(": heartbeat\n\n");
+    }, 30_000);
+    req.raw.on("close", () => clearInterval(keepAlive));
+
     // Keep handler open
-    if (!closed) {
-      await new Promise<void>((resolve) => {
-        req.raw.on("close", resolve);
-      });
-    }
+    await new Promise<void>((resolve) => {
+      req.raw.on("close", resolve);
+    });
   });
 
   // GET /api/events/stats — quick stats

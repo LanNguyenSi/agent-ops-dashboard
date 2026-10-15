@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Fixed
 
 - The activity page now replays the events it missed while disconnected: the stream proxy maps the hook's `?cursor=` to the gateway's `Last-Event-ID`, and answers `502` with a JSON error instead of throwing when the gateway is unreachable.
+- When the replay query behind `/api/events/stream` fails, the gateway now answers `503` with a JSON error before any event-stream header is written, instead of opening an empty stream. The browser sees a failed connection, so the activity page retries with a growing backoff (the hook resets its backoff only after a frame arrives) and the same cursor.
+- An agent that goes offline and is then deleted records a single `agent.disconnected` event.
 - The gateway subscribes to live events before the replay query on `/api/events/stream` and de-duplicates by id, so an event emitted during the replay is no longer lost.
 - A failed database migration no longer removes the `/api/events*` routes; only the state routes depend on a migrated database.
 - `ops_heartbeat` (MCP) reports a failure instead of `success: true` when the gateway answers `404` or another non-2xx status for the heartbeat.
@@ -22,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - The gateway records `agent.disconnected` in the durable event log when an agent goes offline or is deleted (payload `{ agentId, name, reason }`).
-- `/api/agents` reads the Triologue health URL from the new `TRIOLOGUE_HEALTH_URL` variable instead of a hard-coded host. Unset, it answers `503` (`NOT_CONFIGURED`); on failure it answers `502` (`UPSTREAM_FAILED`) instead of returning mock agents. `/api/alerts` no longer appends two sample alerts to the rule-generated ones. Operators who relied on the old host must set `TRIOLOGUE_HEALTH_URL`.
+- `/api/agents` reads the Triologue health URL from the new `TRIOLOGUE_HEALTH_URL` variable instead of a hard-coded host. Unset, it answers `503` (`NOT_CONFIGURED`); on failure it answers `502` (`UPSTREAM_FAILED`) instead of returning mock agents. `/api/alerts` never returns sample alerts: it is empty when `GITHUB_REPOS` is unset and answers `500` when rule evaluation fails. Operators who relied on the old host must set `TRIOLOGUE_HEALTH_URL`.
 
 ### Security
 

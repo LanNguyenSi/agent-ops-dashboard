@@ -89,7 +89,9 @@ describe("GET /api/events/stream", () => {
     raw.write = vi.fn();
     raw.end = vi.fn();
     const req = { raw, query: {}, headers };
-    const reply = { raw };
+    const reply: any = { raw };
+    reply.code = vi.fn(() => reply);
+    reply.send = vi.fn(() => reply);
     return { req, reply, raw };
   }
 
@@ -206,7 +208,7 @@ describe("GET /api/events/stream", () => {
     await handlerPromise;
   });
 
-  it("ends the stream and drops the subscription when the replay query fails, so the client reconnects with its cursor", async () => {
+  it("answers 503 JSON without SSE headers and drops the subscription when the replay query fails", async () => {
     const { fastify, store } = makeFakeFastify();
     registerEventRoutes(fastify);
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -222,13 +224,46 @@ describe("GET /api/events/stream", () => {
     // The handler returns on its own: nothing keeps the stream open.
     await store["/api/events/stream"].handler(req, reply);
 
-    expect(raw.end).toHaveBeenCalledOnce();
+    // No event-stream headers: the browser must see a non-ok response so
+    // EventSource errors without firing onopen.
+    expect(raw.writeHead).not.toHaveBeenCalled();
+    expect(reply.code).toHaveBeenCalledWith(503);
+    expect(reply.send).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.any(String) })
+    );
+    expect(raw.end).not.toHaveBeenCalled();
     expect(unsubscribe).toHaveBeenCalledOnce();
-    // An event emitted after the failure must not reach the client, or its
-    // cursor would move past the events the failed replay never delivered.
+    // An event emitted after the failure must not reach the client.
     capturedSubscriber.send({ id: 9, eventType: "agent.heartbeat" });
-    expect(raw.write).not.toHaveBeenCalledWith("id: 9\n");
+    expect(raw.write).not.toHaveBeenCalled();
     errSpy.mockRestore();
+  });
+
+  it("writes SSE headers only after the replay succeeded", async () => {
+    const { fastify, store } = makeFakeFastify();
+    registerEventRoutes(fastify);
+    let resolveReplay!: (events: unknown[]) => void;
+    mockGetEventsSince.mockReturnValue(
+      new Promise((resolve) => {
+        resolveReplay = resolve;
+      })
+    );
+    mockSubscribe.mockReturnValue(vi.fn());
+
+    const { req, reply, raw } = makeStreamReq({ "last-event-id": "3" });
+    const handlerPromise = store["/api/events/stream"].handler(req, reply);
+    await flush();
+    expect(raw.writeHead).not.toHaveBeenCalled();
+
+    resolveReplay([]);
+    await flush();
+    expect(raw.writeHead).toHaveBeenCalledWith(
+      200,
+      expect.objectContaining({ "Content-Type": "text/event-stream" })
+    );
+
+    raw.emit("close");
+    await handlerPromise;
   });
 
   it("writes no frames after the client disconnects while the replay is in flight", async () => {
@@ -259,6 +294,7 @@ describe("GET /api/events/stream", () => {
     ]);
     await handlerPromise;
 
+    expect(raw.writeHead).not.toHaveBeenCalled();
     const idFrames = raw.write.mock.calls
       .map((c: unknown[]) => c[0])
       .filter((w: string) => w.startsWith("id: "));
