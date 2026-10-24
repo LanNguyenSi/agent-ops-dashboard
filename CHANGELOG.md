@@ -31,6 +31,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **next 16.3.8** (GHSA-3w37-wq28-93x7, GHSA-4jqv-mc3x-m676, GHSA-39w2-rjm5-chcv, GHSA-f87g-xv8r-7p7x, GHSA-mcj8-r9mp-w47p, GHSA-cjq9-62q9-8jv4): the lockfile resolves 16.3.8 with its matching `@next/env` and `@next/swc-*` packages and the `next` dependency floor is now `^16.3.8`.
 - **`@modelcontextprotocol/sdk` 1.32.1** (GHSA-6qxp-vccf-f47h, task aff72e2b): the lockfile resolves 1.32.1 and the `@opentriologue/mcp` dependency range is now `~1.32.1`, so consumers cannot resolve an affected version. Since 1.30.1 the SDK's HTTP server transports apply a 4 MiB default request-body limit and a 100-message batch cap.
 - **sharp 0.35.5** (GHSA-wq5f-xc86-pv6w, task aff72e2b), installed through `next`: the lockfile resolves 0.35.5 with matching `@img/*` binaries and the `sharp` override floor is now `^0.35.5`.
+- **next 16.4.3** (GHSA-673q-mjm6-r5xr, GHSA-2464-fhr4-w9xw, GHSA-p3m5-59mp-jv5r): the lockfile resolves 16.4.3 with its matching `@next/env` and `@next/swc-*` packages, which fixes two unauthenticated remote code execution paths (`use cache` functions returning typed arrays, the Image Optimization API with SVG files) and a Server Actions denial of service.
+- **body-parser 2.4.0** (GHSA-27r3-jxmh-p828): the lockfile resolves 2.4.0 (with content-type 2.1.0, iconv-lite 0.7.3 and qs 6.16.1, which it requires), so trailing bytes after a compressed request body no longer cause a denial of service.
+- **fast-uri 3.1.9 and 4.2.3** (GHSA-w74x-v6f9-j3xg, GHSA-wjr9-j795-jxcr, GHSA-xhq7-xmqj-769h, GHSA-333x-w4r6-6crp): the lockfile resolves 3.1.9 and 4.2.3, which fixes scheme spoofing, host confusion, path equivalence and scheme injection in URI parsing. It is installed through `ajv` and `fast-json-stringify`.
+- **fastify 5.12.7** (GHSA-389g-gv7q-r4x8): the lockfile resolves 5.12.7, which fixes a header validation bypass via case-sensitive `propertyNames`.
+- **ip-address 10.7.4** (GHSA-rxp7-6hxx-x8q5): the lockfile resolves 10.7.4, which fixes quadratic-time matching of a zone identifier in `Address6`, so a long input string can no longer stall a process.
+- **undici 7.30.1** (GHSA-xjj6-f33q-929c, GHSA-4qv8-2p9j-2685, GHSA-f72v-6w45-q472): the lockfile resolves 7.30.1, which fixes a denial of service via excessive content-encodings, unbounded memory in the EventSource parser and a Subresource Integrity bypass. It is a development dependency (installed through `jsdom`).
+- **zod 4.6.7** (GHSA-mrhx-c7xc-m3w5): the lockfile resolves 4.6.7, so validating an oversized constrained collection no longer exhausts memory.
 
 ### Added
 
