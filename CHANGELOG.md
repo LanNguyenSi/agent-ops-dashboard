@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-25
+
+Activity-stream replay, live paths without mock data, and a set of dependency security fixes. `/api/agents` now needs `TRIOLOGUE_HEALTH_URL` (see Changed). The npm packages are released alongside: `@opentriologue/client` 0.2.1 and `@opentriologue/mcp` 0.3.1.
+
 ### Fixed
 
 - The activity page now replays the events it missed while disconnected: the stream proxy maps the hook's `?cursor=` to the gateway's `Last-Event-ID`, and answers `502` with a JSON error instead of throwing when the gateway is unreachable.
@@ -20,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - The pending CI status of repo health is reachable: the latest workflow run is requested whatever its status.
 - `make health` exits non-zero and prints `Health check failed` when the endpoint does not answer; its help text no longer claims to check production. New `make health-gateway`. The `docker-up` and `dev-docker` help text now says they start no gateway.
 - The default `GITHUB_REPOS` in `docker-compose.yml` uses `owner/repo` pairs.
+- `@opentriologue/client` no longer compiles its test files into `dist/` (the `tsconfig.json` build now excludes them), and `src/cli.ts` runs the CLI only when it is the main module, so importing it (as the new tests do) no longer parses `process.argv`. The `agent-ops` binary behaves as before. The package gained a vitest suite with a coverage gate.
 
 ### Changed
 
@@ -30,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - **next 16.3.8** (GHSA-3w37-wq28-93x7, GHSA-4jqv-mc3x-m676, GHSA-39w2-rjm5-chcv, GHSA-f87g-xv8r-7p7x, GHSA-mcj8-r9mp-w47p, GHSA-cjq9-62q9-8jv4): the lockfile resolves 16.3.8 with its matching `@next/env` and `@next/swc-*` packages and the `next` dependency floor is now `^16.3.8`.
 - **`@modelcontextprotocol/sdk` 1.32.1** (GHSA-6qxp-vccf-f47h, task aff72e2b): the lockfile resolves 1.32.1 and the `@opentriologue/mcp` dependency range is now `~1.32.1`, so consumers cannot resolve an affected version. Since 1.30.1 the SDK's HTTP server transports apply a 4 MiB default request-body limit and a 100-message batch cap.
+- **follow-redirects 1.16.1, hono 4.13.13, vite 8.3.5** (GHSA-8r9p-f939-6h3c, GHSA-q3jh-wrc6-jgq8, GHSA-5r4p-p66f-jhc7, GHSA-587h-7wmj-h5pm, GHSA-698v-4r3x-3vcv, GHSA-r825-w8mm-5pxw): in-range lockfile updates with their dependency closure (`launch-editor`, `rolldown`, `lightningcss`). vite is a development dependency.
 - **sharp 0.35.5** (GHSA-wq5f-xc86-pv6w, task aff72e2b), installed through `next`: the lockfile resolves 0.35.5 with matching `@img/*` binaries and the `sharp` override floor is now `^0.35.5`.
 - **next 16.4.3** (GHSA-673q-mjm6-r5xr, GHSA-2464-fhr4-w9xw, GHSA-p3m5-59mp-jv5r): the lockfile resolves 16.4.3 with its matching `@next/env` and `@next/swc-*` packages, which fixes two unauthenticated remote code execution paths (`use cache` functions returning typed arrays, the Image Optimization API with SVG files) and a Server Actions denial of service.
 - **body-parser 2.4.0** (GHSA-27r3-jxmh-p828): the lockfile resolves 2.4.0 (with content-type 2.1.0, iconv-lite 0.7.3 and qs 6.16.1, which it requires), so trailing bytes after a compressed request body no longer cause a denial of service.
