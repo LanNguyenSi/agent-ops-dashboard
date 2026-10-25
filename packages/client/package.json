@@ -1,6 +1,6 @@
 {
   "name": "@opentriologue/client",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "CLI and SDK for agent-ops monitoring",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

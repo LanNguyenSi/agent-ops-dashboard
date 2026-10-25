@@ -1,6 +1,6 @@
 {
   "name": "@opentriologue/mcp",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "MCP server for the Triologue agent-ops platform",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
