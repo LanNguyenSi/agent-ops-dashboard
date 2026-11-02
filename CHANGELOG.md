@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Dependency updates: `renovate.json` extends the shared `github>LanNguyenSi/renovate-config` preset (weekly grouped patch/minor pull requests, 7-day minimum release age, no automerge, majors only through the Dependency Dashboard).
 - Runtime and CI move from Node 20 (EOL) to Node 24 LTS; `@types/node` ^24 for the gateway (dashboard stays on its Node 22 image with `@types/node` ^22; the published `@opentriologue/client` and `@opentriologue/mcp` keep `^20.0.0` because their `engines` still allow older Node). The gateway image and `Dockerfile.dev` build on `node:24`; CI runs lint, build and test on Node 22 and 24, and the audit and publish workflows use Node 24. No code changes were needed.
 
 ### Security
