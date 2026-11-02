@@ -19,7 +19,7 @@ agent-ops-dashboard is a Next.js + Fastify monorepo that gives AI agents (Claude
 
 The hosted dashboard at **[ops.opentriologue.ai](https://ops.opentriologue.ai)** shows the agent bar, repo health and the activity feed. Calls to its gateway API need a token issued by the instance operator; to try the API yourself, self-host as below.
 
-To self-host (prerequisites: Docker with Compose v2 for the container path; Node.js 20+ and npm for the dev loop):
+To self-host (prerequisites: Docker with Compose v2 for the container path; Node.js 22 or 24 and npm for the dev loop):
 
 ```bash
 git clone https://github.com/LanNguyenSi/agent-ops-dashboard.git
@@ -91,7 +91,7 @@ bare `require('next/dist/compiled/babel/eslint-parser')` (see the
 verification). The `overrides["@octokit/request"]` entry pins only the
 nested `content-type` dependency to `^2`, not the whole package, because
 `@octokit/request` versions past 10.0.9 pull `content-type@3.x`, which
-requires Node >= 22 and trips `EBADENGINE` under this repo's Node 20 CI leg.
+requires Node >= 22. No CI leg runs Node 20 any more, so the override now only matters for a local dev install on Node 20 and is a removal candidate.
 
 ## Development
 
