@@ -91,7 +91,7 @@ bare `require('next/dist/compiled/babel/eslint-parser')` (see the
 verification). The `overrides["@octokit/request"]` entry pins only the
 nested `content-type` dependency to `^2`, not the whole package, because
 `@octokit/request` versions past 10.0.9 pull `content-type@3.x`, which
-requires Node >= 22 and trips `EBADENGINE` under this repo's Node 20 CI leg.
+requires Node >= 22 and trips `EBADENGINE` on Node 20, which the published packages' `engines` still allow.
 
 ## Development
 
