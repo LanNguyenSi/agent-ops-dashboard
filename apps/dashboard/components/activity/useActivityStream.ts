@@ -92,13 +92,14 @@ export function useActivityStream(filters: ActivityFilters): UseActivityStreamRe
     es.onopen = () => {
       setIsConnected(true);
       setError(null);
-      // The backoff counter is NOT reset here: a response that opens and then
-      // errors without a frame must keep growing the delay. It resets on the
-      // first frame below.
+      // A successful open proves the gateway is reachable again, so the next
+      // drop starts the backoff over. Resetting only on the first event frame
+      // instead made an idle-but-healthy stream carry the accumulated delay
+      // into its next reconnect, however long it had been working.
+      reconnectAttemptsRef.current = 0;
     };
 
     const handleEvent = (event: MessageEvent) => {
-      reconnectAttemptsRef.current = 0;
       try {
         const data: AgentEvent = JSON.parse(event.data as string);
         lastEventIdRef.current = data.id;

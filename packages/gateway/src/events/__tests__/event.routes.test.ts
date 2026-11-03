@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { EventEmitter } from "events";
+import cors from "@fastify/cors";
+import Fastify, { type FastifyInstance } from "fastify";
 
 const mockGetEvents = vi.fn();
 const mockGetEventsSince = vi.fn();
@@ -83,13 +85,16 @@ describe("GET /api/events", () => {
 });
 
 describe("GET /api/events/stream", () => {
-  function makeStreamReq(headers: Record<string, string> = {}) {
+  function makeStreamReq(
+    headers: Record<string, string> = {},
+    replyHeaders: Record<string, string | string[] | undefined> = {},
+  ) {
     const raw = new EventEmitter() as any;
     raw.writeHead = vi.fn();
     raw.write = vi.fn();
     raw.end = vi.fn();
     const req = { raw, query: {}, headers };
-    const reply: any = { raw };
+    const reply: any = { raw, getHeaders: vi.fn(() => ({ ...replyHeaders })) };
     reply.code = vi.fn(() => reply);
     reply.send = vi.fn(() => reply);
     return { req, reply, raw };
@@ -320,6 +325,124 @@ describe("GET /api/events/stream", () => {
 
     raw.emit("close");
     await handlerPromise;
+  });
+
+  it("merges every header already set on the reply into the SSE response headers", async () => {
+    const { fastify, store } = makeFakeFastify();
+    registerEventRoutes(fastify);
+    mockSubscribe.mockReturnValue(vi.fn());
+
+    const { req, reply, raw } = makeStreamReq(
+      {},
+      {
+        // What a hook on the reply looks like: @fastify/cors writes the
+        // allowlist result this way from its onRequest hook.
+        "access-control-allow-origin": "http://localhost:3000",
+        "x-trace-id": "trace-1",
+        // Multi-value and absent values are the other two shapes a reply
+        // header can have.
+        "x-tags": ["a", "b"],
+        "x-abandoned": undefined,
+      },
+    );
+
+    const handlerPromise = store["/api/events/stream"].handler(req, reply);
+    await flush();
+
+    const [status, headers] = raw.writeHead.mock.calls[0] as [number, Record<string, string>];
+    expect(status).toBe(200);
+    expect(headers["access-control-allow-origin"]).toBe("http://localhost:3000");
+    expect(headers["x-trace-id"]).toBe("trace-1");
+    expect(headers["x-tags"]).toBe("a, b");
+    expect(headers).not.toHaveProperty("x-abandoned");
+    expect(headers["Content-Type"]).toBe("text/event-stream");
+
+    raw.emit("close");
+    await handlerPromise;
+  });
+
+  it("writes each SSE-critical header once, with the stream's own value, when the reply set one too", async () => {
+    const { fastify, store } = makeFakeFastify();
+    registerEventRoutes(fastify);
+    mockSubscribe.mockReturnValue(vi.fn());
+
+    const { req, reply, raw } = makeStreamReq(
+      {},
+      {
+        "content-type": "application/json",
+        "cache-control": "public",
+        connection: "close",
+        "x-accel-buffering": "yes",
+        "x-trace-id": "trace-1",
+      },
+    );
+
+    const handlerPromise = store["/api/events/stream"].handler(req, reply);
+    await flush();
+
+    const [, headers] = raw.writeHead.mock.calls[0] as [number, Record<string, string>];
+    const names = Object.keys(headers);
+    for (const critical of ["content-type", "cache-control", "connection", "x-accel-buffering"]) {
+      expect(names.filter((name) => name.toLowerCase() === critical)).toHaveLength(1);
+    }
+    // The stream's own values win a collision; unrelated reply headers survive.
+    expect(headers["Content-Type"]).toBe("text/event-stream");
+    expect(headers["Cache-Control"]).toBe("no-cache");
+    expect(headers["Connection"]).toBe("keep-alive");
+    expect(headers["X-Accel-Buffering"]).toBe("no");
+    expect(headers["x-trace-id"]).toBe("trace-1");
+
+    raw.emit("close");
+    await handlerPromise;
+  });
+});
+
+// The two header tests above drive the handler with a fake reply. These two
+// prove the header reaches the client: a real Fastify app, a header put on the
+// reply before the handler, and the actual injected response.
+describe("GET /api/events/stream header propagation (real app)", () => {
+  // `payloadAsStream: true` resolves once the headers are written, which is the
+  // only thing this route ever writes before the client disconnects; emitting
+  // 'close' on the injected request then settles the pending handler.
+  async function openStream(app: FastifyInstance, headers: Record<string, string> = {}) {
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/events/stream",
+      headers,
+      payloadAsStream: true,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers["content-type"]).toBe("text/event-stream");
+    expect(res.raw.res.req).toBeDefined();
+    res.raw.res.req.emit("close");
+    return res;
+  }
+
+  it("answers the stream with a header set on the reply by a preHandler", async () => {
+    mockSubscribe.mockReturnValue(vi.fn());
+
+    const app = Fastify();
+    registerEventRoutes(app, async (_req, reply) => {
+      reply.header("x-trace-id", "trace-1");
+    });
+
+    const res = await openStream(app);
+    expect(res.headers["x-trace-id"]).toBe("trace-1");
+    await app.close();
+  });
+
+  it("answers the stream with the CORS header @fastify/cors put on the reply", async () => {
+    mockSubscribe.mockReturnValue(vi.fn());
+
+    const app = Fastify();
+    await app.register(cors, { origin: ["http://localhost:3000"] });
+    registerEventRoutes(app);
+
+    const res = await openStream(app, { origin: "http://localhost:3000" });
+    // The removed writeHead payload claimed "CORS handled by @fastify/cors"
+    // while bypassing exactly the header that plugin sets.
+    expect(res.headers["access-control-allow-origin"]).toBe("http://localhost:3000");
+    await app.close();
   });
 });
 
