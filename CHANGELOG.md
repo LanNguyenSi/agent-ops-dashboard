@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - Dependency updates: `renovate.json` extends the shared `github>LanNguyenSi/renovate-config` preset (weekly grouped patch/minor pull requests, 7-day minimum release age, no automerge, majors only through the Dependency Dashboard).
 - Runtime and CI move from Node 20 (EOL) to Node 24 LTS; `@types/node` ^24 for the gateway (dashboard stays on its Node 22 image with `@types/node` ^22; the published `@opentriologue/client` and `@opentriologue/mcp` keep `^20.0.0` because their `engines` still allow older Node). The gateway image and `Dockerfile.dev` build on `node:24`; CI runs lint, build and test on Node 22 and 24, and the audit and publish workflows use Node 24. No code changes were needed.
+- Removed the `GHSA-vfj7-8cjw-p6xm` (braces) entry from `.github/audit-allowlist.json`: GitHub withdrew the advisory on 2026-10-23, and `npm audit` no longer reports it in this repo's lockfile tree(s), so the gate stays CLEAN with an empty `entries` list. `scripts/audit-gate.mjs` is unchanged.
 
 ### Security
 
