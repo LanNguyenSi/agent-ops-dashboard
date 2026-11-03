@@ -8,9 +8,6 @@ WORKDIR /app
 # CHANGELOG) and the docker-smoke job enforces the resulting versions.
 COPY package.json package-lock.json ./
 COPY packages/gateway/package.json packages/gateway/package.json
-# npm 10 (bundled with the former Node 20 base) crashes resolving @vitest/coverage-v8's exact
-# vitest peer pin ("Cannot read properties of null (reading 'edgesOut')"); npm >= 11 resolves it.
-RUN npm install -g npm@11
 RUN npm ci --no-audit --no-fund -w packages/gateway
 COPY packages/gateway/tsconfig.json packages/gateway/tsconfig.build.json packages/gateway/
 COPY packages/gateway/src packages/gateway/src
@@ -21,9 +18,6 @@ FROM node:24-alpine
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY packages/gateway/package.json packages/gateway/package.json
-# npm 10 (bundled with the former Node 20 base) crashes resolving @vitest/coverage-v8's exact
-# vitest peer pin ("Cannot read properties of null (reading 'edgesOut')"); npm >= 11 resolves it.
-RUN npm install -g npm@11
 RUN npm ci --omit=dev --no-audit --no-fund -w packages/gateway
 COPY --from=builder /app/packages/gateway/dist ./packages/gateway/dist
 WORKDIR /app/packages/gateway

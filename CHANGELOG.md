@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Dependency updates: `renovate.json` extends the shared `github>LanNguyenSi/renovate-config` preset (weekly grouped patch/minor pull requests, 7-day minimum release age, no automerge, majors only through the Dependency Dashboard).
 - Runtime and CI move from Node 20 (EOL) to Node 24 LTS; `@types/node` ^24 for the gateway (dashboard stays on its Node 22 image with `@types/node` ^22; the published `@opentriologue/client` and `@opentriologue/mcp` keep `^20.0.0` because their `engines` still allow older Node). The gateway image and `Dockerfile.dev` build on `node:24`; CI runs lint, build and test on Node 22 and 24, and the audit and publish workflows use Node 24. No code changes were needed.
 - Removed the `GHSA-vfj7-8cjw-p6xm` (braces) entry from `.github/audit-allowlist.json`: GitHub withdrew the advisory on 2026-10-23, and `npm audit` no longer reports it in this repo's lockfile tree(s), so the gate stays CLEAN with an empty `entries` list. `scripts/audit-gate.mjs` is unchanged.
+- The gateway image installs no npm of its own: both `packages/gateway/Dockerfile` stages dropped `npm install -g npm@11`. That line worked around an npm 10 arborist crash on the `@vitest/coverage-v8` peer pin and was added while the base image was Node 20; `node:24-alpine` already ships npm 11, so the line only added a registry round trip to every stage.
+
+### Fixed
+
+- The activity page resets its reconnect backoff when the event stream opens, not only when the first event frame arrives. A stream that connected and then stayed idle used to carry the delay built up by the failed attempts into its next disconnect; reconnect attempts that never open still grow the delay as before.
+- `GET /api/events/stream` no longer drops the headers hooks put on the reply. The success path writes its headers with `reply.raw.writeHead`, which bypasses Fastify's header flush, so `@fastify/cors`'s `Access-Control-Allow-Origin` (allowlist via `GATEWAY_ALLOWED_ORIGINS`) never reached the browser. The stream's own four headers are now applied on top of `reply.getHeaders()`, so hook headers survive and a name collision resolves to the stream's value exactly once.
 
 ### Security
 

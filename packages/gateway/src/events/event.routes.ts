@@ -7,6 +7,33 @@ function sendSSEEvent(reply: FastifyReply, event: { id: number; eventType: strin
   reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
 }
 
+// The headers that define the stream itself; they win over any same-named
+// header already on the reply.
+const SSE_HEADERS: Record<string, string> = {
+  "Content-Type": "text/event-stream",
+  "Cache-Control": "no-cache",
+  "Connection": "keep-alive",
+  "X-Accel-Buffering": "no",
+};
+
+const SSE_HEADER_NAMES = new Set(Object.keys(SSE_HEADERS).map((name) => name.toLowerCase()));
+
+// The stream is answered through reply.raw.writeHead, so reply.send never runs
+// and Fastify never flushes what hooks put on the reply. Without this merge
+// those headers are dropped: @fastify/cors sets Access-Control-Allow-Origin
+// from its onRequest hook (allowlist via GATEWAY_ALLOWED_ORIGINS), so the
+// stream would carry no CORS header at all despite the plugin being registered.
+// getHeaders() reports lowercased names, and the SSE headers are applied last,
+// so a collision resolves to the stream's own value exactly once.
+function streamHeaders(reply: FastifyReply): Record<string, string> {
+  const headers: Record<string, string> = {};
+  for (const [name, value] of Object.entries(reply.getHeaders())) {
+    if (value === undefined || SSE_HEADER_NAMES.has(name.toLowerCase())) continue;
+    headers[name] = Array.isArray(value) ? value.join(", ") : String(value);
+  }
+  return { ...headers, ...SSE_HEADERS };
+}
+
 export function registerEventRoutes(
   fastify: FastifyInstance,
   preHandler?: preHandlerHookHandler,
@@ -81,13 +108,7 @@ export function registerEventRoutes(
     }
 
     if (closed) return;
-    reply.raw.writeHead(200, {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      "Connection": "keep-alive",
-      "X-Accel-Buffering": "no",
-      // CORS handled by @fastify/cors (allowlist via GATEWAY_ALLOWED_ORIGINS).
-    });
+    reply.raw.writeHead(200, streamHeaders(reply));
     for (const event of missed) {
       sentIds.add(event.id);
       sendSSEEvent(reply, event);

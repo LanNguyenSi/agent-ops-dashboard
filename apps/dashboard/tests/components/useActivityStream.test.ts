@@ -126,7 +126,7 @@ describe("useActivityStream", () => {
     expect(FakeEventSource.instances).toHaveLength(2);
   });
 
-  it("grows the reconnect delay when the stream opens and errors without a frame", () => {
+  it("grows the reconnect delay while reconnect attempts never reach open", () => {
     vi.useFakeTimers();
     renderHook(() => useActivityStream({}));
 
@@ -134,7 +134,6 @@ describe("useActivityStream", () => {
       const es = FakeEventSource.instances[FakeEventSource.instances.length - 1]!;
       const before = FakeEventSource.instances.length;
       act(() => {
-        es.emitOpen();
         es.emitError();
       });
       act(() => {
@@ -148,15 +147,14 @@ describe("useActivityStream", () => {
     }
   });
 
-  it("resets the reconnect delay once a frame arrived", () => {
+  it("resets the reconnect delay on open, before any frame arrives", () => {
     vi.useFakeTimers();
     renderHook(() => useActivityStream({}));
 
-    // Two failures without a frame: the next delay would be 4s.
-    for (let i = 0; i < 2; i++) {
+    // Three attempts that never open: the next delay would be 8s.
+    for (let i = 0; i < 3; i++) {
       const es = FakeEventSource.instances[FakeEventSource.instances.length - 1]!;
       act(() => {
-        es.emitOpen();
         es.emitError();
       });
       act(() => {
@@ -164,23 +162,58 @@ describe("useActivityStream", () => {
       });
     }
 
+    // Opens, stays idle (no frame at all), then drops: the delay after that
+    // drop is the initial one, not the one the failed attempts built up.
     const es = FakeEventSource.instances[FakeEventSource.instances.length - 1]!;
     act(() => {
       es.emitOpen();
-      es.emit("agent.registered", {
-        id: 1,
-        agentId: "a1",
-        eventType: "agent.registered",
-        payload: {},
-        createdAt: "2026-01-01T00:00:00Z",
-      });
       es.emitError();
     });
     const before = FakeEventSource.instances.length;
     act(() => {
-      vi.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(999);
+    });
+    expect(FakeEventSource.instances).toHaveLength(before);
+    act(() => {
+      vi.advanceTimersByTime(1);
     });
     expect(FakeEventSource.instances).toHaveLength(before + 1);
+  });
+
+  it("keeps reconnecting at the initial delay after a healthy idle stream drops", () => {
+    vi.useFakeTimers();
+    renderHook(() => useActivityStream({}));
+
+    // Two failed attempts, then a connection that holds for a while with no
+    // traffic and drops twice: every retry after the first open stays at the
+    // base delay instead of ratcheting up.
+    for (let i = 0; i < 2; i++) {
+      const es = FakeEventSource.instances[FakeEventSource.instances.length - 1]!;
+      act(() => {
+        es.emitError();
+      });
+      act(() => {
+        vi.advanceTimersByTime(30_000);
+      });
+    }
+
+    for (const idle of [60_000, 300_000]) {
+      const es = FakeEventSource.instances[FakeEventSource.instances.length - 1]!;
+      const before = FakeEventSource.instances.length;
+      act(() => {
+        es.emitOpen();
+        vi.advanceTimersByTime(idle);
+        es.emitError();
+      });
+      act(() => {
+        vi.advanceTimersByTime(999);
+      });
+      expect(FakeEventSource.instances).toHaveLength(before);
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(FakeEventSource.instances).toHaveLength(before + 1);
+    }
   });
 
   it("closes the EventSource on unmount", () => {
