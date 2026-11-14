@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Security
 
+- **`hono` 4.13.18** (GHSA-46wx-v44x-9hh2, GHSA-4h7h-rv7c-7m2v, GHSA-4m76-xfj5-7975, GHSA-h7mg-cq63-vhpq, GHSA-3gg2-335m-rxc6): the lockfile resolves 4.13.18 (was 4.13.13), which fixes `csrf()` ignoring `text/ping` requests, `validator('form')` skipping multipart bodies with extra parameters, `mount()` forwarding paths that bypass scoped middleware, RegExpRouter skipping wildcard middleware, and the `css` helper HTML injection (affected: `< 4.13.16`). Lockfile only, pulled in through `@modelcontextprotocol/sdk`; the declared ranges are unchanged.
 - **`@hono/node-server` 2.1.5** (GHSA-rmxm-3fg6-px4f): the lockfile resolves 2.1.5 (was 2.0.12), which fixes `serveStatic` decoding the request path a second time and so letting a request bypass middleware on static paths (affected: `>= 1.19.10, < 2.1.3`). Lockfile only, pulled in through `@modelcontextprotocol/sdk`, whose range is unchanged.
 - **`follow-redirects` 1.16.2** (GHSA-mrwp-f3q8-3g9p): the lockfile resolves 1.16.2 (was 1.16.1), so cross-realm `sensitiveHeaders` arrays are no longer discarded and custom credentials no longer follow redirects (affected: `>= 1.16.0, <= 1.16.1`). Lockfile only, pulled in through `axios`.
 - **`@hono/node-server` 2.1.8** (GHSA-jpvv-r467-5p4w): the lockfile resolves 2.1.8 (was 2.1.5), which answers a request path containing a raw backslash with 400 instead of treating the backslash as `/`.
